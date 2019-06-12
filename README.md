@@ -31,6 +31,9 @@ Parameters:
 * `buf0`   : Pointer to the beginning of the recorded arguments in `mlog_begin`.
 * `buf1`   : Pointer to the beginning of the recorded arguments in `mlog_end`.
 
+Return value:
+* Bytes of the recorded args in `buf1` (`buf1_size`).
+
 ### mlog_end
 
 ```c
@@ -63,5 +66,5 @@ rank1          |           |           |           |           |           |    
 end_buf        |           |           |           |           |           |           |           |
           -----------------------------------------------------------------------------------------------
                                                    <----------------------------------->
-                                                            decoder_read_bytes
+                                                                buf1_size
 ```
