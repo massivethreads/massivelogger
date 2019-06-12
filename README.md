@@ -19,13 +19,11 @@ Return value:
 
 `decoder` should be defined as follows.
 ```c
-int decoder(FILE* stream, uint64_t t0, uint64_t t1, int rank0, int rank1, void* buf0, void* buf1);
+int decoder(FILE* stream, int rank0, int rank1, void* buf0, void* buf1);
 ```
 
 Parameters:
 * `stream` : File stream to write output.
-* `t0`     : Timestamp when `mlog_begin` is called.
-* `t1`     : Timestamp when `mlog_end` is called.
 * `rank0`  : Who calls `mlog_begin`.
 * `rank1`  : Who calls `mlog_end`.
 * `buf0`   : Pointer to the beginning of the recorded arguments in `mlog_begin`.
@@ -51,20 +49,20 @@ Parameters:
                                             buf0
                                              |
                                              v
-          -----------------------------------------------------------------------------------------------
-rank0                      |           |           |           |
-                 ...       |    t0     |   arg1    |   arg2    |                   ...
-begin_buf                  |           |           |           |
-          -----------------------------------------------------------------------------------------------
+          -----------------------------------------------------------------------------------
+rank0                      |           |           |
+                 ...       |   arg1    |   arg2    |                   ...
+begin_buf                  |           |           |
+          -----------------------------------------------------------------------------------
                                  ^
                                  |                      buf1
                                  |                       |
                                  |                       v
-          -----------------------------------------------------------------------------------------------
-rank1          |           |           |           |           |           |           |           |
-           ... |  decoder  | begin_ptr |    t1     |   arg1    |   arg2    |    ...    |  decoder  | ...
-end_buf        |           |           |           |           |           |           |           |
-          -----------------------------------------------------------------------------------------------
-                                                   <----------------------------------->
-                                                                buf1_size
+          -----------------------------------------------------------------------------------
+rank1          |           |           |           |           |           |           |
+           ... |  decoder  | begin_ptr |   arg1    |   arg2    |    ...    |  decoder  | ...
+end_buf        |           |           |           |           |           |           |
+          -----------------------------------------------------------------------------------
+                                       <----------------------------------->
+                                                    buf1_size
 ```
