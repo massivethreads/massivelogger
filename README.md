@@ -6,7 +6,7 @@ Lightweight Logging Library for Multi-Threading.
 
 ### mlog_begin
 ```c
-void* mlog_begin(int rank, int (*decoder)(FILE*, uint64_t, uint64_t, int, int, void*, void*), ...);
+void* mlog_begin(int rank, int (*decoder)(FILE*, int, int, void*, void*), ...);
 ```
 
 Parameters:
