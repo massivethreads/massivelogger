@@ -61,11 +61,11 @@ Parameters:
 
 ### mlog_flush_all
 ```c
-void mlog_flush(FILE* stream);
+void mlog_flush_all(FILE* stream);
 ```
 
 Parameters:
-* `stream` : Logs are written to `stream`.
+* `stream` : All logs are written to `stream`.
 
 ## Illustration of Buffers
 
