@@ -4,6 +4,14 @@ Lightweight Logging Library for Multi-Threading.
 
 ## API
 
+### mlog_init
+```c
+void mlog_init(int num_ranks);
+```
+
+Parameters:
+* `num_ranks` : The number of ranks (e.g., workers or threads) who use MassiveLogger.
+
 ### MLOG_BEGIN
 ```c
 void* MLOG_BEGIN(int rank, int (*decoder)(FILE*, int, int, void*, void*), ...);
@@ -33,7 +41,6 @@ Return value:
 * Bytes of the recorded args in `buf1` (`buf1_size`).
 
 ### MLOG_END
-
 ```c
 void MLOG_END(int rank, void* begin_ptr, ...);
 ```
@@ -42,6 +49,15 @@ Parameters:
 * `rank`      : e.g., worker ID or thread ID.
 * `begin_ptr` : The return value of `MLOG_BEGIN` function.
 * `...`       : Arguments to record.
+
+### mlog_flush
+```c
+void mlog_flush(int rank, FILE* stream);
+```
+
+Parameters:
+* `rank`   : Logs in the end buffer of `rank` are flushed.
+* `stream` : Logs are written to `stream`.
 
 ## Illustration of Buffers
 
