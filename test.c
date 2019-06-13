@@ -33,24 +33,25 @@ int decoder(FILE* stream, int rank0, int rank1, void* buf0, void* buf1) {
 int main() {
   mlog_init(2);
 
-  void* x1 = MLOG_BEGIN(1, decoder, get_time_in_usec(), 1, 2.1);
+  for (int i = 0; i < 3; i++) {
+    void* x1 = MLOG_BEGIN(1, decoder, get_time_in_usec(), 1, 2.1);
 
-  MLOG_END(1, x1, get_time_in_usec(), 3.1f, 1);
+    MLOG_END(1, x1, get_time_in_usec(), 3.1f, 1);
 
-  void* x2 = MLOG_BEGIN(1, decoder, get_time_in_usec(), 2, 1.1);
+    void* x2 = MLOG_BEGIN(1, decoder, get_time_in_usec(), 2, 1.1);
 
-  void* x3 = MLOG_BEGIN(1, decoder, get_time_in_usec(), 3, 1.1);
+    void* x3 = MLOG_BEGIN(1, decoder, get_time_in_usec(), 3, 1.1);
 
-  void* x4 = MLOG_BEGIN(0, decoder, get_time_in_usec(), 4, 1.0);
+    void* x4 = MLOG_BEGIN(0, decoder, get_time_in_usec(), 4, 1.0);
 
-  MLOG_END(1, x3, get_time_in_usec(), 2.99f, 3);
+    MLOG_END(1, x3, get_time_in_usec(), 2.99f, 3);
 
-  MLOG_END(0, x2, get_time_in_usec(), 2.99f, 2);
+    MLOG_END(0, x2, get_time_in_usec(), 2.99f, 2);
 
-  MLOG_END(0, x4, get_time_in_usec(), -33.3f, 4);
+    MLOG_END(0, x4, get_time_in_usec(), -33.3f, 4);
 
-  mlog_flush(0, stderr);
-  mlog_flush(1, stderr);
+    mlog_flush_all(stderr);
+  }
 
   return 0;
 }

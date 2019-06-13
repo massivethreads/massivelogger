@@ -59,6 +59,14 @@ Parameters:
 * `rank`   : Logs in the end buffer of `rank` are flushed.
 * `stream` : Logs are written to `stream`.
 
+### mlog_flush_all
+```c
+void mlog_flush(FILE* stream);
+```
+
+Parameters:
+* `stream` : Logs are written to `stream`.
+
 ## Illustration of Buffers
 
 ```

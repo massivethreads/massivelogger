@@ -90,6 +90,16 @@ static inline int _mlog_get_rank_from_begin_ptr(void *begin_ptr) {
   return -1;
 }
 
+void mlog_clear_begin_buffer(int rank) {
+  g_mlog_begin_buffer[rank] = g_mlog_begin_buffer_0[rank];
+}
+
+void mlog_clear_begin_buffer_all() {
+  for (int rank = 0; rank < g_mlog_num_ranks; rank++) {
+    mlog_clear_begin_buffer(rank);
+  }
+}
+
 void mlog_flush(int rank, FILE* stream) {
   void* cur_end_buffer = g_mlog_end_buffer_0[rank];
   while (cur_end_buffer < g_mlog_end_buffer[rank]) {
@@ -102,6 +112,14 @@ void mlog_flush(int rank, FILE* stream) {
     int            buf1_size = decoder(stream, rank0, rank1, buf0, buf1);
     cur_end_buffer = buf1 + buf1_size;
   }
+  g_mlog_end_buffer[rank] = g_mlog_end_buffer_0[rank];
+}
+
+void mlog_flush_all(FILE* stream) {
+  for (int rank = 0; rank < g_mlog_num_ranks; rank++) {
+    mlog_flush(rank, stream);
+  }
+  mlog_clear_begin_buffer_all();
 }
 
 #endif /* MASSIVE_LOGGER_H_ */
