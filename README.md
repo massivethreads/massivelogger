@@ -2,6 +2,15 @@
 
 Lightweight Logging Library for Multi-Threading.
 
+## Test
+```sh
+mkdir build
+cd build
+cmake ..
+cmake --build .
+ctest
+```
+
 ## API
 
 ### mlog_init

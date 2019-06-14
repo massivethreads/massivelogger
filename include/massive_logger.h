@@ -2,7 +2,7 @@
 #ifndef MASSIVE_LOGGER_H_
 #define MASSIVE_LOGGER_H_
 
-#include "util.h"
+#include "mlog_macro_util.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
