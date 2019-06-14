@@ -17,3 +17,5 @@ add_test(
   NAME    mlog_test
   COMMAND $<TARGET_FILE:mlog_test>
 )
+
+add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure)

@@ -7,8 +7,8 @@ Lightweight Logging Library for Multi-Threading.
 mkdir build
 cd build
 cmake ..
-cmake --build .
-ctest
+make
+make check
 ```
 
 ## API

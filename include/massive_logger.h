@@ -113,6 +113,7 @@ void mlog_flush(int rank, FILE* stream) {
     cur_end_buffer = (char*)buf1 + buf1_size;
   }
   g_mlog_end_buffer[rank] = g_mlog_end_buffer_0[rank];
+  fflush(stream);
 }
 
 void mlog_flush_all(FILE* stream) {
