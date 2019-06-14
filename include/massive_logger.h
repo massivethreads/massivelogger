@@ -41,7 +41,7 @@ void mlog_init(int num_ranks) {
 
 #define MLOG_BEGIN_WRITE_ARG(arg) MLOG_BEGIN_WRITE_ARG_(_mlog_rank, arg)
 #define MLOG_BEGIN_WRITE_ARG_(rank, arg) \
-  *((typeof(arg)*)(g_mlog_begin_buffer[rank])) = arg; \
+  *((__typeof__(arg)*)(g_mlog_begin_buffer[rank])) = arg; \
   g_mlog_begin_buffer[rank] += sizeof(arg);
 
 #define MLOG_BEGIN(rank, decoder, ...) \
@@ -54,7 +54,7 @@ void mlog_init(int num_ranks) {
 
 static inline void _mlog_write_decoder_to_begin_buffer(int rank, mlog_decoder_t decoder) {
   *((mlog_decoder_t*)(g_mlog_begin_buffer[rank])) = decoder;
-  g_mlog_begin_buffer[rank] += sizeof(mlog_decoder_t);
+  g_mlog_begin_buffer[rank] = ((char*)(g_mlog_begin_buffer[rank])) + sizeof(mlog_decoder_t);
 }
 
 /*
@@ -63,7 +63,7 @@ static inline void _mlog_write_decoder_to_begin_buffer(int rank, mlog_decoder_t 
 
 #define MLOG_END_WRITE_ARG(arg) MLOG_END_WRITE_ARG_(_mlog_rank, arg)
 #define MLOG_END_WRITE_ARG_(rank, arg) \
-  *((typeof(arg)*)(g_mlog_end_buffer[rank])) = arg; \
+  *((__typeof__(arg)*)(g_mlog_end_buffer[rank])) = arg; \
   g_mlog_end_buffer[rank] += sizeof(arg);
 
 #define MLOG_END(rank, begin_ptr, ...) { \
@@ -74,7 +74,7 @@ static inline void _mlog_write_decoder_to_begin_buffer(int rank, mlog_decoder_t 
 
 static inline void _mlog_write_begin_ptr_to_end_buffer(int rank, void* begin_ptr) {
   *((void**)g_mlog_end_buffer[rank]) = begin_ptr;
-  g_mlog_end_buffer[rank] += sizeof(void*);
+  g_mlog_end_buffer[rank] = ((char*)(g_mlog_end_buffer[rank])) + sizeof(void*);
 }
 
 /*
@@ -105,12 +105,12 @@ void mlog_flush(int rank, FILE* stream) {
   while (cur_end_buffer < g_mlog_end_buffer[rank]) {
     void*          begin_ptr = *((void**)cur_end_buffer);
     mlog_decoder_t decoder   = *((mlog_decoder_t*)begin_ptr);
-    void*          buf0      = begin_ptr + sizeof(mlog_decoder_t);
-    void*          buf1      = cur_end_buffer + sizeof(void*);
+    void*          buf0      = (char*)begin_ptr + sizeof(mlog_decoder_t);
+    void*          buf1      = (char*)cur_end_buffer + sizeof(void*);
     int            rank0     = _mlog_get_rank_from_begin_ptr(begin_ptr);
     int            rank1     = rank;
     int            buf1_size = decoder(stream, rank0, rank1, buf0, buf1);
-    cur_end_buffer = buf1 + buf1_size;
+    cur_end_buffer = (char*)buf1 + buf1_size;
   }
   g_mlog_end_buffer[rank] = g_mlog_end_buffer_0[rank];
 }
