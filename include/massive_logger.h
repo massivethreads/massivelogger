@@ -78,6 +78,41 @@ static inline void _mlog_write_begin_ptr_to_end_buffer(int rank, void* begin_ptr
 }
 
 /*
+ * mlog_clear
+ */
+
+void mlog_clear_begin_buffer(int rank) {
+  g_mlog_begin_buffer[rank] = g_mlog_begin_buffer_0[rank];
+}
+
+void mlog_clear_begin_buffer_all() {
+  for (int rank = 0; rank < g_mlog_num_ranks; rank++) {
+    mlog_clear_begin_buffer(rank);
+  }
+}
+
+void mlog_clear_end_buffer(int rank) {
+  g_mlog_end_buffer[rank] = g_mlog_end_buffer_0[rank];
+}
+
+void mlog_clear_end_buffer_all() {
+  for (int rank = 0; rank < g_mlog_num_ranks; rank++) {
+    mlog_clear_end_buffer(rank);
+  }
+}
+
+void mlog_clear(int rank) {
+  mlog_clear_begin_buffer(rank);
+  mlog_clear_end_buffer(rank);
+}
+
+void mlog_clear_all() {
+  for (int rank = 0; rank < g_mlog_num_ranks; rank++) {
+    mlog_clear(rank);
+  }
+}
+
+/*
  * mlog_flush
  */
 
@@ -88,16 +123,6 @@ static inline int _mlog_get_rank_from_begin_ptr(void *begin_ptr) {
     }
   }
   return -1;
-}
-
-void mlog_clear_begin_buffer(int rank) {
-  g_mlog_begin_buffer[rank] = g_mlog_begin_buffer_0[rank];
-}
-
-void mlog_clear_begin_buffer_all() {
-  for (int rank = 0; rank < g_mlog_num_ranks; rank++) {
-    mlog_clear_begin_buffer(rank);
-  }
 }
 
 void mlog_flush(int rank, FILE* stream) {
