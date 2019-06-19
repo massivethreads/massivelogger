@@ -11,13 +11,16 @@
 extern "C" {
 #endif
 
-#define BUFFER_SIZE (2 << 20)
+#define MLOG_BUFFER_SIZE (2 << 20)
 
-int    g_mlog_num_ranks;
-void** g_mlog_begin_buffer;
-void** g_mlog_end_buffer;
-void** g_mlog_begin_buffer_0;
-void** g_mlog_end_buffer_0;
+typedef struct mlog_data {
+  int       num_ranks;
+  void**    begin_buffer;
+  void**    end_buffer;
+  void**    begin_buffer_0;
+  void**    end_buffer_0;
+}
+mlog_data_t;
 
 typedef int (*mlog_decoder_t)(FILE*, int, int, void*, void*);
 
@@ -25,17 +28,17 @@ typedef int (*mlog_decoder_t)(FILE*, int, int, void*, void*);
  * mlog_init
  */
 
-void mlog_init(int num_ranks) {
-  g_mlog_num_ranks      = num_ranks;
-  g_mlog_begin_buffer   = (void**)malloc(num_ranks * sizeof(void*));
-  g_mlog_end_buffer     = (void**)malloc(num_ranks * sizeof(void*));
-  g_mlog_begin_buffer_0 = (void**)malloc(num_ranks * sizeof(void*));
-  g_mlog_end_buffer_0   = (void**)malloc(num_ranks * sizeof(void*));
+static inline void mlog_init(mlog_data_t* md, int num_ranks) {
+  md->num_ranks      = num_ranks;
+  md->begin_buffer   = (void**)malloc(num_ranks * sizeof(void*));
+  md->end_buffer     = (void**)malloc(num_ranks * sizeof(void*));
+  md->begin_buffer_0 = (void**)malloc(num_ranks * sizeof(void*));
+  md->end_buffer_0   = (void**)malloc(num_ranks * sizeof(void*));
   for (int rank = 0; rank < num_ranks; rank++) {
-    g_mlog_begin_buffer[rank]   = (void*)malloc(BUFFER_SIZE);
-    g_mlog_end_buffer[rank]     = (void*)malloc(BUFFER_SIZE);
-    g_mlog_begin_buffer_0[rank] = g_mlog_begin_buffer[rank];
-    g_mlog_end_buffer_0[rank]   = g_mlog_end_buffer[rank];
+    md->begin_buffer[rank]   = (void*)malloc(MLOG_BUFFER_SIZE);
+    md->end_buffer[rank]     = (void*)malloc(MLOG_BUFFER_SIZE);
+    md->begin_buffer_0[rank] = md->begin_buffer[rank];
+    md->end_buffer_0[rank]   = md->end_buffer[rank];
   }
 }
 
@@ -45,20 +48,21 @@ void mlog_init(int num_ranks) {
 
 #define MLOG_BEGIN_WRITE_ARG(arg) MLOG_BEGIN_WRITE_ARG_(_mlog_rank, arg)
 #define MLOG_BEGIN_WRITE_ARG_(rank, arg) \
-  *((__typeof__(arg)*)(g_mlog_begin_buffer[rank])) = arg; \
-  g_mlog_begin_buffer[rank] += sizeof(arg);
+  *((__typeof__(arg)*)(_mlog_md->begin_buffer[rank])) = arg; \
+  _mlog_md->begin_buffer[rank] += sizeof(arg);
 
-#define MLOG_BEGIN(rank, decoder, ...) \
-  g_mlog_begin_buffer[rank]; \
+#define MLOG_BEGIN(md, rank, decoder, ...) \
+  ((md)->begin_buffer[rank]); \
   { \
-    int _mlog_rank = rank; \
-    _mlog_write_decoder_to_begin_buffer(_mlog_rank, decoder); \
+    mlog_data_t* _mlog_md = (md); \
+    int _mlog_rank = (rank); \
+    _mlog_write_decoder_to_begin_buffer(_mlog_md, _mlog_rank, (decoder)); \
     MLOG_FOREACH(MLOG_BEGIN_WRITE_ARG, __VA_ARGS__); \
   }
 
-static inline void _mlog_write_decoder_to_begin_buffer(int rank, mlog_decoder_t decoder) {
-  *((mlog_decoder_t*)(g_mlog_begin_buffer[rank])) = decoder;
-  g_mlog_begin_buffer[rank] = ((char*)(g_mlog_begin_buffer[rank])) + sizeof(mlog_decoder_t);
+static inline void _mlog_write_decoder_to_begin_buffer(mlog_data_t* md, int rank, mlog_decoder_t decoder) {
+  *((mlog_decoder_t*)(md->begin_buffer[rank])) = decoder;
+  md->begin_buffer[rank] = ((char*)(md->begin_buffer[rank])) + sizeof(mlog_decoder_t);
 }
 
 /*
@@ -67,52 +71,53 @@ static inline void _mlog_write_decoder_to_begin_buffer(int rank, mlog_decoder_t 
 
 #define MLOG_END_WRITE_ARG(arg) MLOG_END_WRITE_ARG_(_mlog_rank, arg)
 #define MLOG_END_WRITE_ARG_(rank, arg) \
-  *((__typeof__(arg)*)(g_mlog_end_buffer[rank])) = arg; \
-  g_mlog_end_buffer[rank] += sizeof(arg);
+  *((__typeof__(arg)*)(_mlog_md->end_buffer[rank])) = arg; \
+  _mlog_md->end_buffer[rank] += sizeof(arg);
 
-#define MLOG_END(rank, begin_ptr, ...) { \
-    int _mlog_rank = rank; \
-    _mlog_write_begin_ptr_to_end_buffer(rank, begin_ptr); \
+#define MLOG_END(md, rank, begin_ptr, ...) { \
+    mlog_data_t* _mlog_md = (md); \
+    int _mlog_rank = (rank); \
+    _mlog_write_begin_ptr_to_end_buffer(_mlog_md, _mlog_rank, (begin_ptr)); \
     MLOG_FOREACH(MLOG_END_WRITE_ARG, __VA_ARGS__); \
   }
 
-static inline void _mlog_write_begin_ptr_to_end_buffer(int rank, void* begin_ptr) {
-  *((void**)g_mlog_end_buffer[rank]) = begin_ptr;
-  g_mlog_end_buffer[rank] = ((char*)(g_mlog_end_buffer[rank])) + sizeof(void*);
+static inline void _mlog_write_begin_ptr_to_end_buffer(mlog_data_t* md, int rank, void* begin_ptr) {
+  *((void**)md->end_buffer[rank]) = begin_ptr;
+  md->end_buffer[rank] = ((char*)(md->end_buffer[rank])) + sizeof(void*);
 }
 
 /*
  * mlog_clear
  */
 
-void mlog_clear_begin_buffer(int rank) {
-  g_mlog_begin_buffer[rank] = g_mlog_begin_buffer_0[rank];
+static inline void mlog_clear_begin_buffer(mlog_data_t* md, int rank) {
+  md->begin_buffer[rank] = md->begin_buffer_0[rank];
 }
 
-void mlog_clear_begin_buffer_all() {
-  for (int rank = 0; rank < g_mlog_num_ranks; rank++) {
-    mlog_clear_begin_buffer(rank);
+static inline void mlog_clear_begin_buffer_all(mlog_data_t* md) {
+  for (int rank = 0; rank < md->num_ranks; rank++) {
+    mlog_clear_begin_buffer(md, rank);
   }
 }
 
-void mlog_clear_end_buffer(int rank) {
-  g_mlog_end_buffer[rank] = g_mlog_end_buffer_0[rank];
+static inline void mlog_clear_end_buffer(mlog_data_t* md, int rank) {
+  md->end_buffer[rank] = md->end_buffer_0[rank];
 }
 
-void mlog_clear_end_buffer_all() {
-  for (int rank = 0; rank < g_mlog_num_ranks; rank++) {
-    mlog_clear_end_buffer(rank);
+static inline void mlog_clear_end_buffer_all(mlog_data_t* md) {
+  for (int rank = 0; rank < md->num_ranks; rank++) {
+    mlog_clear_end_buffer(md, rank);
   }
 }
 
-void mlog_clear(int rank) {
-  mlog_clear_begin_buffer(rank);
-  mlog_clear_end_buffer(rank);
+static inline void mlog_clear(mlog_data_t* md, int rank) {
+  mlog_clear_begin_buffer(md, rank);
+  mlog_clear_end_buffer(md, rank);
 }
 
-void mlog_clear_all() {
-  for (int rank = 0; rank < g_mlog_num_ranks; rank++) {
-    mlog_clear(rank);
+static inline void mlog_clear_all(mlog_data_t* md) {
+  for (int rank = 0; rank < md->num_ranks; rank++) {
+    mlog_clear(md, rank);
   }
 }
 
@@ -120,36 +125,36 @@ void mlog_clear_all() {
  * mlog_flush
  */
 
-static inline int _mlog_get_rank_from_begin_ptr(void *begin_ptr) {
-  for (int rank = 0; rank < g_mlog_num_ranks; rank++) {
-    if (g_mlog_begin_buffer_0[rank] <= begin_ptr && begin_ptr < g_mlog_begin_buffer[rank]) {
+static inline int _mlog_get_rank_from_begin_ptr(mlog_data_t* md, void* begin_ptr) {
+  for (int rank = 0; rank < md->num_ranks; rank++) {
+    if (md->begin_buffer_0[rank] <= begin_ptr && begin_ptr < md->begin_buffer[rank]) {
       return rank;
     }
   }
   return -1;
 }
 
-void mlog_flush(int rank, FILE* stream) {
-  void* cur_end_buffer = g_mlog_end_buffer_0[rank];
-  while (cur_end_buffer < g_mlog_end_buffer[rank]) {
+static inline void mlog_flush(mlog_data_t* md, int rank, FILE* stream) {
+  void* cur_end_buffer = md->end_buffer_0[rank];
+  while (cur_end_buffer < md->end_buffer[rank]) {
     void*          begin_ptr = *((void**)cur_end_buffer);
     mlog_decoder_t decoder   = *((mlog_decoder_t*)begin_ptr);
     void*          buf0      = (char*)begin_ptr + sizeof(mlog_decoder_t);
     void*          buf1      = (char*)cur_end_buffer + sizeof(void*);
-    int            rank0     = _mlog_get_rank_from_begin_ptr(begin_ptr);
+    int            rank0     = _mlog_get_rank_from_begin_ptr(md, begin_ptr);
     int            rank1     = rank;
     int            buf1_size = decoder(stream, rank0, rank1, buf0, buf1);
     cur_end_buffer = (char*)buf1 + buf1_size;
   }
-  g_mlog_end_buffer[rank] = g_mlog_end_buffer_0[rank];
+  md->end_buffer[rank] = md->end_buffer_0[rank];
   fflush(stream);
 }
 
-void mlog_flush_all(FILE* stream) {
-  for (int rank = 0; rank < g_mlog_num_ranks; rank++) {
-    mlog_flush(rank, stream);
+static inline void mlog_flush_all(mlog_data_t* md, FILE* stream) {
+  for (int rank = 0; rank < md->num_ranks; rank++) {
+    mlog_flush(md, rank, stream);
   }
-  mlog_clear_begin_buffer_all();
+  mlog_clear_begin_buffer_all(md);
 }
 
 #ifdef __cplusplus
