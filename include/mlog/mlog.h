@@ -1,11 +1,15 @@
 #pragma once
-#ifndef MASSIVE_LOGGER_H_
-#define MASSIVE_LOGGER_H_
+#ifndef MLOG_MLOG_H_
+#define MLOG_MLOG_H_
 
 #include "mlog/util.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define BUFFER_SIZE (2 << 20)
 
@@ -148,5 +152,9 @@ void mlog_flush_all(FILE* stream) {
   mlog_clear_begin_buffer_all();
 }
 
-#endif /* MASSIVE_LOGGER_H_ */
+#ifdef __cplusplus
+} // extern "C"
+#endif
+
+#endif /* MLOG_MLOG_H_ */
 /* vim: set ts=2 sw=2 tw=0: */
