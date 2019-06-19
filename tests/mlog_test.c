@@ -1,6 +1,6 @@
 #include "test_helper.h"
 
-#include "massive_logger.h"
+#include "mlog/mlog.h"
 #include <string.h>
 
 int decoder(FILE* stream, int rank0, int rank1, void* buf0, void* buf1) {
