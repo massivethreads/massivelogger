@@ -76,7 +76,7 @@ int main() {
   ASSERT(buf_size == expected_buf_size, "left:\n%d\nright:\n%d", buf_size, expected_buf_size);
   ASSERT(!strncmp(buf, expected_buf, buf_size), "left:\n%s\nright:\n%s", buf, expected_buf);
 
-  return 1;
+  return 0;
 }
 
 /* vim: set ts=2 sw=2 tw=0: */
