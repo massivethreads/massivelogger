@@ -3,6 +3,8 @@
 #include "mlog/mlog.h"
 #include <string.h>
 
+mlog_data_t g_md;
+
 int decoder(FILE* stream, int rank0, int rank1, void* buf0, void* buf1) {
   void* buf1_0 = buf1;
 
@@ -26,7 +28,7 @@ int decoder(FILE* stream, int rank0, int rank1, void* buf0, void* buf1) {
 }
 
 int main() {
-  mlog_init(3);
+  mlog_init(&g_md, 3);
 
   char*  buf               = NULL;
   size_t buf_size          = 0;
@@ -55,23 +57,23 @@ int main() {
   }
   fflush(expected_stream);
 
-  void* x0 = MLOG_BEGIN(rank0[0], decoder, t0[0], i0[0], d0[0]); // ---
-                                                                 //   |
-  MLOG_END(rank1[0], x0, t1[0], f1[0], i1[0]);                   // <--
-                                                                 //
-  void* x1 = MLOG_BEGIN(rank0[1], decoder, t0[1], i0[1], d0[1]); // ------
-                                                                 //      |
-  void* x2 = MLOG_BEGIN(rank0[2], decoder, t0[2], i0[2], d0[2]); // ---  |
-                                                                 //   |  |
-  MLOG_END(rank1[2], x2, t1[2], f1[2], i1[2]);                   // <--  |
-                                                                 //      |
-  void* x3 = MLOG_BEGIN(rank0[3], decoder, t0[3], i0[3], d0[3]); // -----+---
-                                                                 //      |  |
-  MLOG_END(rank1[1], x1, t1[1], f1[1], i1[1]);                   // <-----  |
-                                                                 //         |
-  MLOG_END(rank1[3], x3, t1[3], f1[3], i1[3]);                   // <--------
+  void* x0 = MLOG_BEGIN(&g_md, rank0[0], decoder, t0[0], i0[0], d0[0]); // ---
+                                                                        //   |
+  MLOG_END(&g_md, rank1[0], x0, t1[0], f1[0], i1[0]);                   // <--
+                                                                        //
+  void* x1 = MLOG_BEGIN(&g_md, rank0[1], decoder, t0[1], i0[1], d0[1]); // ------
+                                                                        //      |
+  void* x2 = MLOG_BEGIN(&g_md, rank0[2], decoder, t0[2], i0[2], d0[2]); // ---  |
+                                                                        //   |  |
+  MLOG_END(&g_md, rank1[2], x2, t1[2], f1[2], i1[2]);                   // <--  |
+                                                                        //      |
+  void* x3 = MLOG_BEGIN(&g_md, rank0[3], decoder, t0[3], i0[3], d0[3]); // -----+---
+                                                                        //      |  |
+  MLOG_END(&g_md, rank1[1], x1, t1[1], f1[1], i1[1]);                   // <-----  |
+                                                                        //         |
+  MLOG_END(&g_md, rank1[3], x3, t1[3], f1[3], i1[3]);                   // <--------
 
-  mlog_flush_all(stream);
+  mlog_flush_all(&g_md, stream);
 
   ASSERT(buf_size == expected_buf_size, "left:\n%d\nright:\n%d", buf_size, expected_buf_size);
   ASSERT(!strncmp(buf, expected_buf, buf_size), "left:\n%s\nright:\n%s", buf, expected_buf);

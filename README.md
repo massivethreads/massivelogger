@@ -13,20 +13,28 @@ make check
 
 ## API
 
+### mlog_data
+
+```c
+typedef struct mlog_data { /* implementation defined */ } mlog_data_t;
+```
+
 ### mlog_init
 ```c
-void mlog_init(int num_ranks);
+void mlog_init(mlog_data_t* md, int num_ranks);
 ```
 
 Parameters:
+* `md`        : Global log data for MassiveLogger.
 * `num_ranks` : The number of ranks (e.g., workers or threads) who use MassiveLogger.
 
 ### MLOG_BEGIN
 ```c
-void* MLOG_BEGIN(int rank, int (*decoder)(FILE*, int, int, void*, void*), ...);
+void* MLOG_BEGIN(mlog_data_t* md, int rank, int (*decoder)(FILE*, int, int, void*, void*), ...);
 ```
 
 Parameters:
+* `md`      : Global log data for MassiveLogger.
 * `rank`    : e.g., worker ID or thread ID.
 * `decoder` : Function pointer to a decorder function that transfers recorded data into formatted string. This is called when outputting recorded data to files. See below for more details.
 * `...`     : Arguments to record.
@@ -36,10 +44,11 @@ Return value:
 
 `decoder` should be defined as follows.
 ```c
-int decoder(FILE* stream, int rank0, int rank1, void* buf0, void* buf1);
+int decoder(mlog_data_t* md, FILE* stream, int rank0, int rank1, void* buf0, void* buf1);
 ```
 
 Parameters:
+* `md`     : Global log data for MassiveLogger.
 * `stream` : File stream to write output.
 * `rank0`  : Who calls `MLOG_BEGIN`.
 * `rank1`  : Who calls `MLOG_END`.
@@ -51,29 +60,32 @@ Return value:
 
 ### MLOG_END
 ```c
-void MLOG_END(int rank, void* begin_ptr, ...);
+void MLOG_END(mlog_data_t* md, int rank, void* begin_ptr, ...);
 ```
 
 Parameters:
+* `md`        : Global log data for MassiveLogger.
 * `rank`      : e.g., worker ID or thread ID.
 * `begin_ptr` : The return value of `MLOG_BEGIN` function.
 * `...`       : Arguments to record.
 
 ### mlog_flush
 ```c
-void mlog_flush(int rank, FILE* stream);
+void mlog_flush(mlog_data_t* md, int rank, FILE* stream);
 ```
 
 Parameters:
+* `md`     : Global log data for MassiveLogger.
 * `rank`   : Logs in the end buffer of `rank` are flushed.
 * `stream` : Logs are written to `stream`.
 
 ### mlog_flush_all
 ```c
-void mlog_flush_all(FILE* stream);
+void mlog_flush_all(mlog_data_t* md, FILE* stream);
 ```
 
 Parameters:
+* `md`     : Global log data for MassiveLogger.
 * `stream` : All logs are written to `stream`.
 
 ## Illustration of Buffers
