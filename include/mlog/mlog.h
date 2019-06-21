@@ -57,17 +57,12 @@ static inline void mlog_init(mlog_data_t* md, int num_ranks) {
 
 #define MLOG_BEGIN_WRITE_ARG(arg) MLOG_BUFFER_WRITE_VALUE(_mlog_buf, arg)
 
-#define MLOG_BEGIN(md, rank, decoder, ...) \
+#define MLOG_BEGIN(md, rank, ...) \
   ((md)->begin_buf[rank].last); \
   { \
     mlog_buffer_t* _mlog_buf = &((md)->begin_buf[rank]); \
-    _mlog_write_decoder_to_begin_buffer(_mlog_buf, (decoder)); \
     MLOG_FOREACH(MLOG_BEGIN_WRITE_ARG, __VA_ARGS__); \
   }
-
-static inline void _mlog_write_decoder_to_begin_buffer(mlog_buffer_t* begin_buf, mlog_decoder_t decoder) {
-  MLOG_BUFFER_WRITE_VALUE(begin_buf, decoder);
-}
 
 /*
  * MLOG_END
@@ -75,9 +70,10 @@ static inline void _mlog_write_decoder_to_begin_buffer(mlog_buffer_t* begin_buf,
 
 #define MLOG_END_WRITE_ARG(arg) MLOG_BUFFER_WRITE_VALUE(_mlog_buf, arg)
 
-#define MLOG_END(md, rank, begin_ptr, ...) { \
+#define MLOG_END(md, rank, begin_ptr, decoder, ...) { \
     mlog_buffer_t* _mlog_buf = &((md)->end_buf[rank]); \
     _mlog_write_begin_ptr_to_end_buffer(_mlog_buf, (begin_ptr)); \
+    _mlog_write_decoder_to_end_buffer(_mlog_buf, (decoder)); \
     MLOG_FOREACH(MLOG_END_WRITE_ARG, __VA_ARGS__); \
   }
 
@@ -85,10 +81,20 @@ static inline void _mlog_write_begin_ptr_to_end_buffer(mlog_buffer_t* end_buf, v
   MLOG_BUFFER_WRITE_VALUE(end_buf, begin_ptr);
 }
 
+static inline void _mlog_write_decoder_to_end_buffer(mlog_buffer_t* end_buf, mlog_decoder_t decoder) {
+  MLOG_BUFFER_WRITE_VALUE(end_buf, decoder);
+}
+
+/*
+ * MLOG_READ_ARG
+ */
+
+#define MLOG_READ_ARG(buf, type) \
+  (*(buf) = (type*)*(buf)+1, *(((type*)*(buf))-1))
+
 /*
  * mlog_clear
  */
-
 
 static inline void mlog_clear_buffer(mlog_buffer_t* buf) {
   buf->last = buf->first;
@@ -145,10 +151,10 @@ static inline int _mlog_get_rank_from_begin_ptr(mlog_data_t* md, void* begin_ptr
 static inline void mlog_flush(mlog_data_t* md, int rank, FILE* stream) {
   void* cur_end_buffer = md->end_buf[rank].first;
   while (cur_end_buffer < md->end_buf[rank].last) {
-    void*          begin_ptr = *((void**)cur_end_buffer);
-    mlog_decoder_t decoder   = *((mlog_decoder_t*)begin_ptr);
-    void*          buf0      = (char*)begin_ptr + sizeof(mlog_decoder_t);
-    void*          buf1      = (char*)cur_end_buffer + sizeof(void*);
+    void*          begin_ptr = MLOG_READ_ARG(&cur_end_buffer, void*);
+    mlog_decoder_t decoder   = MLOG_READ_ARG(&cur_end_buffer, mlog_decoder_t);
+    void*          buf0      = begin_ptr;
+    void*          buf1      = cur_end_buffer;
     int            rank0     = _mlog_get_rank_from_begin_ptr(md, begin_ptr);
     int            rank1     = rank;
     int            buf1_size = decoder(stream, rank0, rank1, buf0, buf1);
@@ -164,13 +170,6 @@ static inline void mlog_flush_all(mlog_data_t* md, FILE* stream) {
   }
   mlog_clear_begin_buffer_all(md);
 }
-
-/*
- * MLOG_READ_ARG
- */
-
-#define MLOG_READ_ARG(buf, type) \
-  (*(buf) = (type*)*(buf)+1, *(((type*)*(buf))-1))
 
 #ifdef __cplusplus
 } // extern "C"
