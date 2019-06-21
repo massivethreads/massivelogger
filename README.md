@@ -30,17 +30,28 @@ Parameters:
 
 ### MLOG_BEGIN
 ```c
-void* MLOG_BEGIN(mlog_data_t* md, int rank, int (*decoder)(FILE*, int, int, void*, void*), ...);
+void* MLOG_BEGIN(mlog_data_t* md, int rank, ...);
 ```
 
 Parameters:
 * `md`      : Global log data for MassiveLogger.
 * `rank`    : e.g., worker ID or thread ID.
-* `decoder` : Function pointer to a decorder function that transfers recorded data into formatted string. This is called when outputting recorded data to files. See below for more details.
 * `...`     : Arguments to record.
 
 Return value:
 * A pointer to the recorded data (`begin_ptr`). This should be passed to `MLOG_END` function.
+
+### MLOG_END
+```c
+void MLOG_END(mlog_data_t* md, int rank, void* begin_ptr, int (*decoder)(FILE*, int, int, void*, void*), ...);
+```
+
+Parameters:
+* `md`        : Global log data for MassiveLogger.
+* `rank`      : e.g., worker ID or thread ID.
+* `begin_ptr` : The return value of `MLOG_BEGIN` function.
+* `decoder` : Function pointer to a decorder function that transfers recorded data into formatted string. This is called when outputting recorded data to files. See below for more details.
+* `...`       : Arguments to record.
 
 `decoder` should be defined as follows.
 ```c
@@ -57,17 +68,6 @@ Parameters:
 
 Return value:
 * Bytes of the recorded args in `buf1` (`buf1_size`).
-
-### MLOG_END
-```c
-void MLOG_END(mlog_data_t* md, int rank, void* begin_ptr, ...);
-```
-
-Parameters:
-* `md`        : Global log data for MassiveLogger.
-* `rank`      : e.g., worker ID or thread ID.
-* `begin_ptr` : The return value of `MLOG_BEGIN` function.
-* `...`       : Arguments to record.
 
 ### mlog_flush
 ```c
@@ -105,23 +105,23 @@ Return value:
 ## Illustration of Buffers
 
 ```
-                                buf0
-                                 |
-                                 v
-          -----------------------------------------------------------------------
-rank0          |           |           |           |
-           ... |  decoder  |   arg1    |   arg2    |            ...
-begin_buf      |           |           |           |
-          -----------------------------------------------------------------------
+                    buf0
+                     |
+                     v
+          -----------------------------------------------------------------------------------
+rank0          |           |           |
+           ... |   arg1    |   arg2    |            ...
+begin_buf      |           |           |
+          -----------------------------------------------------------------------------------
                      ^
-                     |          buf1
-                     |           |
-                     |           v
-          -----------------------------------------------------------------------
-rank1          |           |           |           |           |           |
-           ... | begin_ptr |   arg1    |   arg2    |    ...    | begin_ptr | ...
-end_buf        |           |           |           |           |           |
-          -----------------------------------------------------------------------
-                           <----------------------------------->
-                                        buf1_size
+                     |                      buf1
+                     |                       |
+                     |                       v
+          -----------------------------------------------------------------------------------
+rank1          |           |           |           |           |           |           |
+           ... | begin_ptr |  decoder  |   arg1    |   arg2    |    ...    | begin_ptr | ...
+end_buf        |           |           |           |           |           |           |
+          -----------------------------------------------------------------------------------
+                                       <----------------------------------->
+                                                    buf1_size
 ```

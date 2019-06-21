@@ -51,21 +51,21 @@ int main() {
   }
   fflush(expected_stream);
 
-  void* x0 = MLOG_BEGIN(&g_md, rank0[0], decoder, t0[0], i0[0], d0[0]); // ---
-                                                                        //   |
-  MLOG_END(&g_md, rank1[0], x0, t1[0], f1[0], i1[0]);                   // <--
-                                                                        //
-  void* x1 = MLOG_BEGIN(&g_md, rank0[1], decoder, t0[1], i0[1], d0[1]); // ------
-                                                                        //      |
-  void* x2 = MLOG_BEGIN(&g_md, rank0[2], decoder, t0[2], i0[2], d0[2]); // ---  |
-                                                                        //   |  |
-  MLOG_END(&g_md, rank1[2], x2, t1[2], f1[2], i1[2]);                   // <--  |
-                                                                        //      |
-  void* x3 = MLOG_BEGIN(&g_md, rank0[3], decoder, t0[3], i0[3], d0[3]); // -----+---
-                                                                        //      |  |
-  MLOG_END(&g_md, rank1[1], x1, t1[1], f1[1], i1[1]);                   // <-----  |
-                                                                        //         |
-  MLOG_END(&g_md, rank1[3], x3, t1[3], f1[3], i1[3]);                   // <--------
+  void* x0 = MLOG_BEGIN(&g_md, rank0[0], t0[0], i0[0], d0[0]); // ---
+                                                               //   |
+  MLOG_END(&g_md, rank1[0], x0, decoder, t1[0], f1[0], i1[0]); // <--
+                                                               //
+  void* x1 = MLOG_BEGIN(&g_md, rank0[1], t0[1], i0[1], d0[1]); // ------
+                                                               //      |
+  void* x2 = MLOG_BEGIN(&g_md, rank0[2], t0[2], i0[2], d0[2]); // ---  |
+                                                               //   |  |
+  MLOG_END(&g_md, rank1[2], x2, decoder, t1[2], f1[2], i1[2]); // <--  |
+                                                               //      |
+  void* x3 = MLOG_BEGIN(&g_md, rank0[3], t0[3], i0[3], d0[3]); // -----+---
+                                                               //      |  |
+  MLOG_END(&g_md, rank1[1], x1, decoder, t1[1], f1[1], i1[1]); // <-----  |
+                                                               //         |
+  MLOG_END(&g_md, rank1[3], x3, decoder, t1[3], f1[3], i1[3]); // <--------
 
   mlog_flush_all(&g_md, stream);
 
