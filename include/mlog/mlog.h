@@ -165,6 +165,13 @@ static inline void mlog_flush_all(mlog_data_t* md, FILE* stream) {
   mlog_clear_begin_buffer_all(md);
 }
 
+/*
+ * MLOG_READ_ARG
+ */
+
+#define MLOG_READ_ARG(buf, type) \
+  (*(buf) = (type*)*(buf)+1, *(((type*)*(buf))-1))
+
 #ifdef __cplusplus
 } // extern "C"
 #endif

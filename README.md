@@ -88,6 +88,20 @@ Parameters:
 * `md`     : Global log data for MassiveLogger.
 * `stream` : All logs are written to `stream`.
 
+
+### MLOG_READ_ARG
+```c
+#define MLOG_READ_ARG(/* void** */ buf, type) /* ... */
+```
+
+Parameters:
+* `buf` : Pointer to the buffer pointer.
+          The buffer pointer is advanced by `sizeof(type)`.
+* `type`: Type of the stored value.
+
+Return value:
+* Value loaded from buffer.
+
 ## Illustration of Buffers
 
 ```
