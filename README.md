@@ -11,7 +11,7 @@ make
 make check
 ```
 
-## API
+## Low-level API
 
 ### mlog_data
 
@@ -34,9 +34,9 @@ void* MLOG_BEGIN(mlog_data_t* md, int rank, ...);
 ```
 
 Parameters:
-* `md`      : Global log data for MassiveLogger.
-* `rank`    : e.g., worker ID or thread ID.
-* `...`     : Arguments to record.
+* `md`   : Global log data for MassiveLogger.
+* `rank` : e.g., worker ID or thread ID.
+* `...`  : Arguments to record.
 
 Return value:
 * A pointer to the recorded data (`begin_ptr`). This should be passed to `MLOG_END` function.
@@ -50,7 +50,7 @@ Parameters:
 * `md`        : Global log data for MassiveLogger.
 * `rank`      : e.g., worker ID or thread ID.
 * `begin_ptr` : The return value of `MLOG_BEGIN` function.
-* `decoder` : Function pointer to a decorder function that transfers recorded data into formatted string. This is called when outputting recorded data to files. See below for more details.
+* `decoder`   : Function pointer to a decorder function that transfers recorded data into formatted string. This is called when outputting recorded data to files. See below for more details.
 * `...`       : Arguments to record.
 
 `decoder` should be defined as follows.
@@ -88,7 +88,6 @@ Parameters:
 * `md`     : Global log data for MassiveLogger.
 * `stream` : All logs are written to `stream`.
 
-
 ### MLOG_READ_ARG
 ```c
 #define MLOG_READ_ARG(/* void** */ buf, type) /* ... */
@@ -101,6 +100,59 @@ Parameters:
 
 Return value:
 * Value loaded from buffer.
+
+## High-level API
+
+### mlog_begin_tl
+```c
+void* mlog_begin_tl(mlog_data_t* md, int rank);
+```
+
+`rank` and a timestamp (the return value of `mlog_clock_gettime_in_nsec()`) are recorded to the begin buffer.
+
+Parameters:
+* `md`   : Global log data for MassiveLogger.
+* `rank` : e.g., worker ID or thread ID.
+
+Return value:
+* A pointer to the recorded data (`begin_ptr`). This should be passed to `mlog_end_tl` function.
+
+### mlog_end_tl
+```c
+void mlog_end_tl(mlog_data_t* md, int rank, void* begin_ptr, char* event_name);
+```
+
+`rank`, a timestamp (the return value of `mlog_clock_gettime_in_nsec()`), and `event_name` are recorded to the end buffer.
+
+Parameters:
+* `md`         : Global log data for MassiveLogger.
+* `rank`       : e.g., worker ID or thread ID.
+* `begin_ptr`  : The return value of `mlog_begin_tl` function.
+* `event_name` : Event name to be recorded.
+
+## Functions for Time Measurement
+
+### mlog_gettimeofday_in_usec
+```c
+uint64_t mlog_gettimeofday_in_usec();
+```
+
+Return the value of `gettimeofday` in micro seconds.
+
+### mlog_clock_gettime_in_nsec
+```c
+uint64_t mlog_clock_gettime_in_nsec();
+```
+
+Return the value of `clock_gettime` in nano seconds.
+`CLOCK_MONOTONIC` option is specified to `clock_gettime`.
+
+### mlog_rdtsc
+```c
+uint64_t mlog_rdtsc();
+```
+
+Return the value of `rdtsc` instruction.
 
 ## Illustration of Buffers
 
