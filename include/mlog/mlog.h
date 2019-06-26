@@ -5,6 +5,10 @@
 #include "mlog/base.h"
 #include "mlog/time.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*
  * High level functions
  */
@@ -30,6 +34,10 @@ static inline void* mlog_begin_tl(mlog_data_t* md, int rank) {
 static inline void mlog_end_tl(mlog_data_t* md, int rank, void* begin_ptr, char* event_name) {
   MLOG_END(md, rank, begin_ptr, mlog_default_decoder_tl, mlog_clock_gettime_in_nsec(), event_name);
 }
+
+#ifdef __cplusplus
+} // extern "C"
+#endif
 
 #endif /* MLOG_MLOG_H_ */
 
