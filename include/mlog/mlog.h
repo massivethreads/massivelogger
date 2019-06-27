@@ -13,17 +13,14 @@ extern "C" {
  * High level functions
  */
 
-int mlog_default_decoder_tl(FILE* stream, int rank0, int rank1, void* buf0, void* buf1) {
-  void* buf1_0 = buf1;
-
+void* mlog_default_decoder_tl(FILE* stream, int rank0, int rank1, void* buf0, void* buf1) {
   uint64_t t0         = MLOG_READ_ARG(&buf0, uint64_t);
 
   uint64_t t1         = MLOG_READ_ARG(&buf1, uint64_t);
   char*    event_name = MLOG_READ_ARG(&buf1, char*);
 
   fprintf(stream, "%d,%ld,%d,%ld,%s\n", rank0, t0, rank1, t1, event_name);
-
-  return (int)((char*)buf1 - (char*)buf1_0);
+  return buf1;
 }
 
 static inline void* mlog_begin_tl(mlog_data_t* md, int rank) {

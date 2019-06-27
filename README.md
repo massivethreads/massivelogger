@@ -43,7 +43,7 @@ Return value:
 
 ### MLOG_END
 ```c
-void MLOG_END(mlog_data_t* md, int rank, void* begin_ptr, int (*decoder)(FILE*, int, int, void*, void*), ...);
+void MLOG_END(mlog_data_t* md, int rank, void* begin_ptr, void* (*decoder)(FILE*, int, int, void*, void*), ...);
 ```
 
 Parameters:
@@ -55,7 +55,7 @@ Parameters:
 
 `decoder` should be defined as follows.
 ```c
-int decoder(mlog_data_t* md, FILE* stream, int rank0, int rank1, void* buf0, void* buf1);
+void* decoder(mlog_data_t* md, FILE* stream, int rank0, int rank1, void* buf0, void* buf1);
 ```
 
 Parameters:
@@ -67,7 +67,7 @@ Parameters:
 * `buf1`   : Pointer to the beginning of the recorded arguments in `MLOG_END`.
 
 Return value:
-* Bytes of the recorded args in `buf1` (`buf1_size`).
+* Pointer to the end of the recorded arguments in `MLOG_END`. You can use `MLOG_READ_ARG` macro to read args, and when you have read all recorded args, `buf1` should be the return value.
 
 ### mlog_flush
 ```c
@@ -174,6 +174,4 @@ rank1          |           |           |           |           |           |    
            ... | begin_ptr |  decoder  |   arg1    |   arg2    |    ...    | begin_ptr | ...
 end_buf        |           |           |           |           |           |           |
           -----------------------------------------------------------------------------------
-                                       <----------------------------------->
-                                                    buf1_size
 ```
