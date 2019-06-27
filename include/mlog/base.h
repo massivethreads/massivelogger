@@ -26,7 +26,7 @@ typedef struct mlog_data {
 }
 mlog_data_t;
 
-typedef int (*mlog_decoder_t)(FILE*, int, int, void*, void*);
+typedef void* (*mlog_decoder_t)(FILE*, int, int, void*, void*);
 
 /*
  * mlog_init
@@ -157,8 +157,7 @@ static inline void mlog_flush(mlog_data_t* md, int rank, FILE* stream) {
     void*          buf1      = cur_end_buffer;
     int            rank0     = _mlog_get_rank_from_begin_ptr(md, begin_ptr);
     int            rank1     = rank;
-    int            buf1_size = decoder(stream, rank0, rank1, buf0, buf1);
-    cur_end_buffer = (char*)buf1 + buf1_size;
+    cur_end_buffer = decoder(stream, rank0, rank1, buf0, buf1);
   }
   mlog_clear_end_buffer(md, rank);
   fflush(stream);

@@ -5,9 +5,7 @@
 
 mlog_data_t g_md;
 
-int decoder(FILE* stream, int rank0, int rank1, void* buf0, void* buf1) {
-  void* buf1_0 = buf1;
-
+void* decoder(FILE* stream, int rank0, int rank1, void* buf0, void* buf1) {
   uint64_t t0 = MLOG_READ_ARG(&buf0, uint64_t);
   int      i0 = MLOG_READ_ARG(&buf0, int);
   double   d0 = MLOG_READ_ARG(&buf0, double);
@@ -17,8 +15,7 @@ int decoder(FILE* stream, int rank0, int rank1, void* buf0, void* buf1) {
   int      i1 = MLOG_READ_ARG(&buf1, int);
 
   fprintf(stream, "rank0: %d, rank1: %d, t0: %ld, t1: %ld, i0: %d, d0: %f, f1: %lf, i1: %d\n", rank0, rank1, t0, t1, i0, d0, f1, i1);
-
-  return buf1 - buf1_0;
+  return buf1;
 }
 
 int main() {
