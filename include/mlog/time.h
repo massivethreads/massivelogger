@@ -6,6 +6,10 @@
 #include <time.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 static inline uint64_t mlog_gettimeofday_in_usec() {
   struct timeval tv;
   gettimeofday(&tv, 0);
@@ -23,6 +27,10 @@ static inline uint64_t mlog_rdtsc() {
   __asm__ volatile ("rdtsc; shlq $32, %%rdx; orq %%rdx, %%rax" : "=a"(r) :: "%rdx");
   return r;
 }
+
+#ifdef __cplusplus
+} // extern "C"
+#endif
 
 #endif /* MLOG_TIME_H_ */
 
