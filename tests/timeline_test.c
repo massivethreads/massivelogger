@@ -5,7 +5,7 @@
 mlog_data_t g_md;
 
 int main() {
-  mlog_init(&g_md, 3);
+  mlog_init(&g_md, 3, 1024);
 
   char*  buf      = NULL;
   size_t buf_size = 0;

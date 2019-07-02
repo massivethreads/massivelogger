@@ -21,12 +21,13 @@ typedef struct mlog_data { /* implementation defined */ } mlog_data_t;
 
 ### mlog_init
 ```c
-void mlog_init(mlog_data_t* md, int num_ranks);
+void mlog_init(mlog_data_t* md, int num_ranks, size_t buf_size);
 ```
 
 Parameters:
 * `md`        : Global log data for MassiveLogger.
 * `num_ranks` : The number of ranks (e.g., workers or threads) who use MassiveLogger.
+* `buf_size`  : Size of the begin buffer and the end buffer.
 
 ### MLOG_BEGIN
 ```c
@@ -153,6 +154,22 @@ uint64_t mlog_rdtsc();
 ```
 
 Return the value of `rdtsc` instruction.
+
+## Config
+How to set flags:
+```c
+#define MLOG_XXX 1
+#include <mlog/mlog.h>
+```
+
+### MLOG_DISABLE_CHECK_BUFFER_SIZE
+Disable checking the size of begin and end buffer with every log call (default: 0).
+Disabling the check may speed up the logging feature, but it can cause segmentation fault (*unsafe*).
+
+### MLOG_DISABLE_REALLOC_BUFFER
+Disable realloc of start and end buffer when buffers become full (default: 0).
+When this flag is set and buffers become full, the execution is aborted without resizing buffers.
+This prevents unconscious overheads with reallocation when measuring the performance.
 
 ## Illustration of Buffers
 

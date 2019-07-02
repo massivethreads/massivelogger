@@ -11,11 +11,18 @@
 extern "C" {
 #endif
 
-#define MLOG_BUFFER_SIZE (2 << 20)
+typedef struct mlog_freelist {
+  struct mlog_freelist* next;
+  void*                 mem;
+  size_t                size;
+}
+mlog_freelist_t;
 
 typedef struct mlog_buffer {
-  void*   first;
-  void*   last;
+  void*            first;
+  void*            last;
+  size_t           size;
+  mlog_freelist_t* freelist;
 }
 mlog_buffer_t;
 
@@ -32,20 +39,90 @@ typedef void* (*mlog_decoder_t)(FILE*, int, int, void*, void*);
  * mlog_init
  */
 
-static inline void mlog_buffer_init(mlog_buffer_t* buf) {
-  buf->first = (void*)malloc(MLOG_BUFFER_SIZE);
-  buf->last  = buf->first;
-};
+static inline void mlog_buffer_init(mlog_buffer_t* buf, size_t buf_size) {
+  buf->first    = (void*)malloc(buf_size);
+  buf->last     = buf->first;
+  buf->size     = buf_size;
+  buf->freelist = NULL;
+}
 
-static inline void mlog_init(mlog_data_t* md, int num_ranks) {
+static inline void mlog_init(mlog_data_t* md, int num_ranks, size_t buf_size) {
   md->num_ranks = num_ranks;
   md->begin_buf = (mlog_buffer_t*)malloc(num_ranks * sizeof(mlog_buffer_t));
   md->end_buf   = (mlog_buffer_t*)malloc(num_ranks * sizeof(mlog_buffer_t));
   for (int rank = 0; rank < num_ranks; rank++) {
-    mlog_buffer_init(&md->begin_buf[rank]);
-    mlog_buffer_init(&md->end_buf[rank]);
+    mlog_buffer_init(&md->begin_buf[rank], buf_size);
+    mlog_buffer_init(&md->end_buf[rank], buf_size);
   }
 }
+
+/*
+ * check begin buffer size
+ */
+
+static inline void _mlog_check_begin_buffer_size(mlog_buffer_t* buf, size_t write_size) {
+  if ((char*)buf->first + buf->size < (char*)buf->last + write_size) {
+#if MLOG_DISABLE_REALLOC_BUFFER
+    fprintf(stderr, "MassiveLogger: realloc of begin buffer is not allowed (MLOG_DISABLE_REALLOC_BUFFER = 1)");
+    abort();
+#else
+    size_t next_size = buf->size * 2;
+    void*  next_buf  = malloc(next_size);
+    if (next_buf == NULL) {
+      perror("malloc");
+      abort();
+    }
+    mlog_freelist_t* fl_node = (mlog_freelist_t*)malloc(sizeof(mlog_freelist_t));
+    if (fl_node == NULL) {
+      perror("malloc");
+      abort();
+    }
+    fl_node->mem  = buf->first;
+    fl_node->size = buf->size;
+    fl_node->next = buf->freelist;
+    buf->freelist = fl_node;
+    buf->first    = next_buf;
+    buf->last     = buf->first;
+    buf->size     = next_size;
+#endif
+  }
+}
+
+#if MLOG_DISABLE_CHECK_BUFFER_SIZE
+#define MLOG_CHECK_BEGIN_BUFFER_SIZE(buf, write_size)
+#else
+#define MLOG_CHECK_BEGIN_BUFFER_SIZE(buf, write_size) _mlog_check_begin_buffer_size((buf), (write_size))
+#endif
+
+/*
+ * check end buffer size
+ */
+
+static inline void _mlog_check_end_buffer_size(mlog_buffer_t* buf, size_t write_size) {
+  if ((char*)buf->first + buf->size < (char*)buf->last + write_size) {
+#if MLOG_DISABLE_REALLOC_BUFFER
+    fprintf(stderr, "MassiveLogger: realloc of end buffer is not allowed (MLOG_DISABLE_REALLOC_BUFFER = 1)");
+    abort();
+#else
+    size_t next_size = buf->size * 2;
+    size_t offset    = (char*)buf->last - (char*)buf->first;
+    void*  next_buf  = realloc(buf->first, next_size);
+    if (next_buf == NULL) {
+      perror("realloc");
+      abort();
+    }
+    buf->first = next_buf;
+    buf->last  = (char*)next_buf + offset;
+    buf->size  = next_size;
+#endif
+  }
+}
+
+#if MLOG_DISABLE_CHECK_BUFFER_SIZE
+#define MLOG_CHECK_END_BUFFER_SIZE(buf, write_size)
+#else
+#define MLOG_CHECK_END_BUFFER_SIZE(buf, write_size) _mlog_check_end_buffer_size((buf), (write_size))
+#endif
 
 /*
  * MLOG_BEGIN
@@ -53,12 +130,12 @@ static inline void mlog_init(mlog_data_t* md, int num_ranks) {
 
 #define MLOG_BUFFER_WRITE_VALUE(buf, arg) \
   *((__typeof__(arg)*)((buf)->last)) = (arg); \
-  (buf)->last = ((char*)(buf)->last) + sizeof(arg);
+  (buf)->last = ((char*)(buf)->last) + MLOG_SIZEOF(arg);
 
 #define MLOG_BEGIN_WRITE_ARG(arg) MLOG_BUFFER_WRITE_VALUE(_mlog_buf, arg)
 
 #define MLOG_BEGIN(md, rank, ...) \
-  ((md)->begin_buf[rank].last); \
+  (MLOG_CHECK_BEGIN_BUFFER_SIZE(&((md)->begin_buf[rank]), MLOG_SUM_SIZEOF(__VA_ARGS__)), ((md)->begin_buf[rank].last)); \
   { \
     mlog_buffer_t* _mlog_buf = &((md)->begin_buf[rank]); \
     MLOG_FOREACH(MLOG_BEGIN_WRITE_ARG, __VA_ARGS__); \
@@ -72,6 +149,7 @@ static inline void mlog_init(mlog_data_t* md, int num_ranks) {
 
 #define MLOG_END(md, rank, begin_ptr, decoder, ...) { \
     mlog_buffer_t* _mlog_buf = &((md)->end_buf[rank]); \
+    MLOG_CHECK_END_BUFFER_SIZE(_mlog_buf, MLOG_SUM_SIZEOF((begin_ptr), (decoder), __VA_ARGS__)); \
     _mlog_write_begin_ptr_to_end_buffer(_mlog_buf, (begin_ptr)); \
     _mlog_write_decoder_to_end_buffer(_mlog_buf, (decoder)); \
     MLOG_FOREACH(MLOG_END_WRITE_ARG, __VA_ARGS__); \
@@ -96,7 +174,19 @@ static inline void _mlog_write_decoder_to_end_buffer(mlog_buffer_t* end_buf, mlo
  * mlog_clear
  */
 
+static inline void mlog_free_buffers_in_freelist(mlog_freelist_t** freelist) {
+  mlog_freelist_t* fl_node = *freelist;
+  while (fl_node != NULL) {
+    free(fl_node->mem);
+    mlog_freelist_t* tmp = fl_node;
+    fl_node = fl_node->next;
+    free(tmp);
+  }
+  *freelist = NULL;
+}
+
 static inline void mlog_clear_buffer(mlog_buffer_t* buf) {
+  mlog_free_buffers_in_freelist(&buf->freelist);
   buf->last = buf->first;
 }
 
@@ -135,8 +225,17 @@ static inline void mlog_clear_all(mlog_data_t* md) {
  * mlog_flush
  */
 
+static inline int _mlog_buffers_in_freelist_include(mlog_freelist_t* freelist, void* p) {
+  mlog_freelist_t* fl_node = freelist;
+  while (fl_node != NULL) {
+    if (fl_node->mem <= p && p < (void*)((char*)fl_node->mem + fl_node->size)) return 1;
+    fl_node = fl_node->next;
+  }
+  return 0;
+}
+
 static inline int _mlog_buffer_includes(mlog_buffer_t* buf, void* p) {
-  return buf->first <= p && p < buf->last;
+  return (buf->first <= p && p < buf->last) || _mlog_buffers_in_freelist_include(buf->freelist, p);
 }
 
 static inline int _mlog_get_rank_from_begin_ptr(mlog_data_t* md, void* begin_ptr) {
