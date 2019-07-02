@@ -19,7 +19,7 @@ void* decoder(FILE* stream, int rank0, int rank1, void* buf0, void* buf1) {
 }
 
 int main() {
-  mlog_init(&g_md, 3);
+  mlog_init(&g_md, 3, 1024);
 
   char*  buf               = NULL;
   size_t buf_size          = 0;
