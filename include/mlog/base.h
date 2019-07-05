@@ -129,7 +129,7 @@ static inline void _mlog_check_end_buffer_size(mlog_buffer_t* buf, size_t write_
  */
 
 #define MLOG_BUFFER_WRITE_VALUE(buf, arg) \
-  *((__typeof__(arg)*)((buf)->last)) = (arg); \
+  *((MLOG_TYPEOF(arg)*)((buf)->last)) = (arg); \
   (buf)->last = ((char*)(buf)->last) + MLOG_SIZEOF(arg);
 
 #define MLOG_BEGIN_WRITE_ARG(arg) MLOG_BUFFER_WRITE_VALUE(_mlog_buf, arg)

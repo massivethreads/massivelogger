@@ -31,7 +31,8 @@
 #define MLOG_FOREACH_(N, op, ...) MLOG_CONCAT(MLOG_FOREACH_, N)(op, __VA_ARGS__)
 #define MLOG_FOREACH(op, ...) MLOG_FOREACH_(MLOG_NARGS(__VA_ARGS__), op, __VA_ARGS__)
 
-#define MLOG_SIZEOF(x) sizeof(__typeof__(((void)0, (x))))
+#define MLOG_TYPEOF(x) __typeof__(((void)0, (x)))
+#define MLOG_SIZEOF(x) sizeof(MLOG_TYPEOF(x))
 
 #define MLOG_PLUS_SIZEOF(x) + MLOG_SIZEOF(x)
 
