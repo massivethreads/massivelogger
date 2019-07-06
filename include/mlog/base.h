@@ -3,6 +3,8 @@
 #define MLOG_BASE_H_
 
 #include "mlog/util.h"
+#include "mlog/printf.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -164,11 +166,15 @@ static inline void _mlog_write_decoder_to_end_buffer(mlog_buffer_t* end_buf, mlo
 }
 
 /*
- * MLOG_READ_ARG
+ * MLOG_PRINTF
  */
 
-#define MLOG_READ_ARG(buf, type) \
-  (*(buf) = (type*)*(buf)+1, *(((type*)*(buf))-1))
+#define MLOG_PRINTF(md, rank, ...) { \
+    mlog_buffer_t* _mlog_buf = &((md)->end_buf[rank]); \
+    MLOG_CHECK_END_BUFFER_SIZE(_mlog_buf, MLOG_SUM_SIZEOF(NULL, __VA_ARGS__)); \
+    _mlog_write_begin_ptr_to_end_buffer(_mlog_buf, NULL); \
+    MLOG_FOREACH(MLOG_END_WRITE_ARG, __VA_ARGS__); \
+  }
 
 /*
  * mlog_clear
@@ -250,13 +256,18 @@ static inline int _mlog_get_rank_from_begin_ptr(mlog_data_t* md, void* begin_ptr
 static inline void mlog_flush(mlog_data_t* md, int rank, FILE* stream) {
   void* cur_end_buffer = md->end_buf[rank].first;
   while (cur_end_buffer < md->end_buf[rank].last) {
-    void*          begin_ptr = MLOG_READ_ARG(&cur_end_buffer, void*);
-    mlog_decoder_t decoder   = MLOG_READ_ARG(&cur_end_buffer, mlog_decoder_t);
-    void*          buf0      = begin_ptr;
-    void*          buf1      = cur_end_buffer;
-    int            rank0     = _mlog_get_rank_from_begin_ptr(md, begin_ptr);
-    int            rank1     = rank;
-    cur_end_buffer = decoder(stream, rank0, rank1, buf0, buf1);
+    void* begin_ptr = MLOG_READ_ARG(&cur_end_buffer, void*);
+    if (begin_ptr) {
+      mlog_decoder_t decoder = MLOG_READ_ARG(&cur_end_buffer, mlog_decoder_t);
+      void*          buf0    = begin_ptr;
+      void*          buf1    = cur_end_buffer;
+      int            rank0   = _mlog_get_rank_from_begin_ptr(md, begin_ptr);
+      int            rank1   = rank;
+      cur_end_buffer = decoder(stream, rank0, rank1, buf0, buf1);
+    } else {
+      char* format = MLOG_READ_ARG(&cur_end_buffer, char*);
+      cur_end_buffer = mlog_decode_printf(stream, format, cur_end_buffer);
+    }
   }
   mlog_clear_end_buffer(md, rank);
   fflush(stream);
