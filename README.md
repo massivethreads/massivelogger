@@ -70,6 +70,28 @@ Parameters:
 Return value:
 * Pointer to the end of the recorded arguments in `MLOG_END`. You can use `MLOG_READ_ARG` macro to read args, and when you have read all recorded args, `buf1` should be the return value.
 
+### MLOG_PRINTF
+```c
+void MLOG_PRINTF(mlog_data_t* md, int rank, char* format, ...);
+```
+
+Parameters:
+* `md`     : Global log data for MassiveLogger.
+* `rank`   : e.g., worker ID or thread ID.
+* `format` : Format string (usually passed to `printf` function).
+* `...`    : Arguments to record.
+
+Note:
+* Arguments passed to `MLOG_PRINTF` are not converted to string when `MLOG_PRINTF` is called.
+  They are converted to string when `mlog_flush` is called.
+* Due to its implementation, type is more strict than `printf`.
+  With `printf`, types of arguments are automatically converted (e.g., float is converted to double), but with `MLOG_PRINTF`, they are not converted.
+  Therefore you should explicitly specify types in `format` and to arguments (see `tests/printf_test.c`).
+* This is different from the C standard, but you must use "%f" with float.
+  If you want to record double value, you should use "%lf" specifier.
+* "%n" is not supported.
+* Currently variable field width `*` specifier (e.g., `"%.*s"`) is not supported.
+
 ### mlog_flush
 ```c
 void mlog_flush(mlog_data_t* md, int rank, FILE* stream);
@@ -173,6 +195,7 @@ This prevents unconscious overheads with reallocation when measuring the perform
 
 ## Illustration of Buffers
 
+`MLOG_BEGIN` and `MLOG_END`:
 ```
                     buf0
                      |
@@ -190,5 +213,14 @@ begin_buf      |           |           |
 rank1          |           |           |           |           |           |           |
            ... | begin_ptr |  decoder  |   arg1    |   arg2    |    ...    | begin_ptr | ...
 end_buf        |           |           |           |           |           |           |
+          -----------------------------------------------------------------------------------
+```
+
+`MLOG_PRINTF`:
+```
+          -----------------------------------------------------------------------------------
+               |           |           |           |           |           |           |
+end_buf    ... |   NULL    |  format   |   arg1    |   arg2    |    ...    |   NULL    | ...
+               |           |           |           |           |           |           |
           -----------------------------------------------------------------------------------
 ```

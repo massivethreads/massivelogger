@@ -19,7 +19,7 @@ void* mlog_default_decoder_tl(FILE* stream, int rank0, int rank1, void* buf0, vo
   uint64_t t1         = MLOG_READ_ARG(&buf1, uint64_t);
   char*    event_name = MLOG_READ_ARG(&buf1, char*);
 
-  fprintf(stream, "%d,%ld,%d,%ld,%s\n", rank0, t0, rank1, t1, event_name);
+  fprintf(stream, "%d,%lu,%d,%lu,%s\n", rank0, t0, rank1, t1, event_name);
   return buf1;
 }
 
