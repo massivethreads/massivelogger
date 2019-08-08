@@ -32,7 +32,7 @@ int main() {
   double      lf = 0.25;
   long double Lf = 0.33333;
   char        c  = 'c';
-  char*       s  = "test";
+  const char* s  = "test";
 
   MLOG_PRINTF(&g_md, 0, "%hd,%hu,%d,%u,%ld,%lu,%f,%lf,%Lf,%c,%s\n", hd, hu, d, u, ld, lu, f, lf, Lf, c, s);
   MLOG_PRINTF(&g_md, 0, "%hi,%ho,%i,%o,%li,%lo,%F,%lF,%LF,%c,%s\n", hd, hu, d, u, ld, lu, f, lf, Lf, c, s);

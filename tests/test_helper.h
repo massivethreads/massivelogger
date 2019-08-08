@@ -1,4 +1,4 @@
-#define _XOPEN_SOURCE 700
+#define _XOPEN_SOURCE 700 // To use clock_gettime in c99
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -10,7 +10,7 @@
     exit(1); \
   }
 
-void _print_error(char* filename, int linenumber, char* format, ...) {
+static inline void _print_error(const char* filename, int linenumber, const char* format, ...) {
   fprintf(stderr, "\x1b[31m"); // red
 
   fprintf(stderr, "[ERROR] %s:%d\n", filename, linenumber);

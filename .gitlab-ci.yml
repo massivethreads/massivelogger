@@ -1,10 +1,9 @@
-
 image: ubuntu:latest
 
 before_script:
     - DEBIAN_FRONTEND=noninteractive apt-get update
     - DEBIAN_FRONTEND=noninteractive apt-get upgrade -y
-    - DEBIAN_FRONTEND=noninteractive apt-get install -y cmake
+    - DEBIAN_FRONTEND=noninteractive apt-get install -y cmake build-essential
 
 stages:
     - test
@@ -17,4 +16,6 @@ test_job:
         - cmake ..
         - make
         - make check
-
+        - cmake -DCOMPILE_AS_CPP=ON ..
+        - make
+        - make check
