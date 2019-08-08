@@ -56,11 +56,10 @@ Parameters:
 
 `decoder` should be defined as follows.
 ```c
-void* decoder(mlog_data_t* md, FILE* stream, int rank0, int rank1, void* buf0, void* buf1);
+void* decoder(FILE* stream, int rank0, int rank1, void* buf0, void* buf1);
 ```
 
 Parameters:
-* `md`     : Global log data for MassiveLogger.
 * `stream` : File stream to write output.
 * `rank0`  : Who calls `MLOG_BEGIN`.
 * `rank1`  : Who calls `MLOG_END`.
