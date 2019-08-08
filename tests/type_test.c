@@ -77,7 +77,7 @@ int main() {
   float          f  = -0.25f;
   double         lf = 0.25;
   char           c  = 'c';
-  char*          s  = "test";
+  const char*    s  = "test";
 
   for (int i = 0; i < N; i++) {
     g_a[i] = i;

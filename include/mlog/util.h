@@ -39,7 +39,15 @@
  * typeof, sizeof
  */
 
+// MLOG_TYPEOF macro forces a type to decay (e.g., array, function pointer)
+#ifdef __cplusplus
+#include <type_traits>
+#define MLOG_TYPEOF(x) __typeof__(typename std::decay<__typeof__(x)>::type)
+#else
+// This trick using a comma operator does not work in C++
 #define MLOG_TYPEOF(x) __typeof__(((void)0, (x)))
+#endif
+
 #define MLOG_SIZEOF(x) sizeof(MLOG_TYPEOF(x))
 
 #define MLOG_PLUS_SIZEOF(x) + MLOG_SIZEOF(x)
@@ -54,4 +62,5 @@
   (*(buf) = (type*)*(buf)+1, *(((type*)*(buf))-1))
 
 #endif /* MLOG_UTIL_H_ */
+
 /* vim: set ts=2 sw=2 tw=0: */
