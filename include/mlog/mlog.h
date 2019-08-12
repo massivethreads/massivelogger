@@ -13,7 +13,7 @@ extern "C" {
  * High level functions
  */
 
-void* mlog_default_decoder_tl(FILE* stream, int rank0, int rank1, void* buf0, void* buf1) {
+static void* __attribute__((unused)) mlog_default_decoder_tl(FILE* stream, int rank0, int rank1, void* buf0, void* buf1) {
   uint64_t t0         = MLOG_READ_ARG(&buf0, uint64_t);
 
   uint64_t t1         = MLOG_READ_ARG(&buf1, uint64_t);

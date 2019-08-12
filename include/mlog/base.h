@@ -91,7 +91,7 @@ static inline void _mlog_check_begin_buffer_size(mlog_buffer_t* buf, size_t writ
 }
 
 #if MLOG_DISABLE_CHECK_BUFFER_SIZE
-#define MLOG_CHECK_BEGIN_BUFFER_SIZE(buf, write_size)
+#define MLOG_CHECK_BEGIN_BUFFER_SIZE(buf, write_size) (void)0
 #else
 #define MLOG_CHECK_BEGIN_BUFFER_SIZE(buf, write_size) _mlog_check_begin_buffer_size((buf), (write_size))
 #endif
@@ -121,7 +121,7 @@ static inline void _mlog_check_end_buffer_size(mlog_buffer_t* buf, size_t write_
 }
 
 #if MLOG_DISABLE_CHECK_BUFFER_SIZE
-#define MLOG_CHECK_END_BUFFER_SIZE(buf, write_size)
+#define MLOG_CHECK_END_BUFFER_SIZE(buf, write_size) (void)0
 #else
 #define MLOG_CHECK_END_BUFFER_SIZE(buf, write_size) _mlog_check_end_buffer_size((buf), (write_size))
 #endif
