@@ -156,7 +156,7 @@ class TimelineTraceViewer:
 
         self.__main_bar = main_fig.hbar(
             y='rank0_pos', left="t0", right="t1", height='height',
-            legend='kind', color=color_mapper, source=self.__main_bar_src)
+            legend='kind', color=color_mapper, alpha=0.8, source=self.__main_bar_src)
 
         self.__migration_segment = main_fig.segment(
             x0='t1', x1='t1', y0='rank0_pos', y1='rank1_pos',
@@ -172,7 +172,7 @@ class TimelineTraceViewer:
                                        toolbar_location=None, output_backend='webgl')
 
         self.__rt_bar = rt_fig.hbar(y="rank0_pos", left="t0", right="t1", height=0.5,
-                                    color=color_mapper, source=self.__rt_bar_src)
+                                    color=color_mapper, alpha=0.8, source=self.__rt_bar_src)
 
         range_tool = bokeh.models.RangeTool(x_range=main_fig.x_range)
         rt_fig.add_tools(range_tool)
