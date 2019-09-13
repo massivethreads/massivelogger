@@ -223,3 +223,7 @@ end_buf    ... |   NULL    |  format   |   arg1    |   arg2    |    ...    |   N
                |           |           |           |           |           |           |
           -----------------------------------------------------------------------------------
 ```
+
+## LICENSE
+
+MassiveLogger is distributed under the 2-Clause BSD License. See LICENSE for further information.
