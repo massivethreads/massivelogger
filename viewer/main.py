@@ -293,7 +293,7 @@ class TimelineTraceViewer:
 
     def __on_click_migrate_checkboxes(self, active_list):
         is_visible = 0 in active_list
-        for ti in self.__main_tabs.values():
+        for ti in self.__main_tabs:
             ti.migration_seg.visible = is_visible
 
     def __on_click_kind_checkboxes(self, active_list):
