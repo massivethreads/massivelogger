@@ -9,6 +9,8 @@
 #include <stdlib.h>
 #include <stdint.h>
 
+#define MLOG_CACHELINE_SIZE 64
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -25,7 +27,7 @@ typedef struct mlog_buffer {
   void*            last;
   size_t           size;
   mlog_freelist_t* freelist;
-}
+} __attribute__((aligned(MLOG_CACHELINE_SIZE)))
 mlog_buffer_t;
 
 typedef struct mlog_data {
