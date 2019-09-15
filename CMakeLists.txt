@@ -19,6 +19,7 @@ else()
 endif()
 
 include_directories(include)
+
 enable_testing()
 
 foreach(file_path ${test_files})
@@ -28,5 +29,11 @@ foreach(file_path ${test_files})
 endforeach()
 
 add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure)
+
+# benckmark
+find_package(Threads)
+add_executable(benchmark benchmarks/benchmark.c)
+target_link_libraries(benchmark ${CMAKE_THREAD_LIBS_INIT})
+target_compile_options(benchmark PRIVATE -O3)
 
 install(DIRECTORY include/ DESTINATION include)
