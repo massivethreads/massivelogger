@@ -1,0 +1,4 @@
+set xrange [0:*]
+set yrange [0:*]
+plot 'mandelbrot.txt' u 1:2:3 w image
+pause -1

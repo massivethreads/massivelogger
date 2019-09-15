@@ -2,6 +2,17 @@
 
 Lightweight Logging Library for Multi-Threading.
 
+## Getting Started
+```sh
+cd examples/mandelbrot
+make
+./mandelbrot
+cd ../../
+./run_viewer.bash examples/mandelbrot/mlog.txt
+```
+
+For more details about Mandelbrot example, see [examples/mandelbrot/README.md](examples/mandelbrot/README.md).
+
 ## Test
 ```sh
 mkdir build
