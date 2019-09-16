@@ -110,7 +110,7 @@ class TimelineTraceViewer:
     __refreshed = { 'main': True, 'sub': True }
     __slider_values = {
         'num_main_bar_samples': 10000,
-        'label_rate': 0.1,
+        'label_rate': 0.0,
         'num_rt_bar_samples': 10000,
         'num_conc': 5
     }
