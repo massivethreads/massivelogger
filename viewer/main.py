@@ -112,7 +112,7 @@ class TimelineTraceViewer:
         'num_main_bar_samples': 10000,
         'label_rate': 0.0,
         'num_rt_bar_samples': 10000,
-        'num_conc': 5
+        'num_conc': 1
     }
     __active_main_tab = 0
 
