@@ -145,7 +145,7 @@ class TimelineTraceViewer:
             fig = bokeh.plotting.figure(
                 plot_width=1200, plot_height=800,
                 x_range=x_range, y_range=y_range,
-                tools='hover,xwheel_zoom,ywheel_zoom,xpan,ypan,save,help',
+                tools='hover,xwheel_zoom,ywheel_zoom,xpan,ypan,reset,crosshair,save,help',
                 active_drag='xpan', active_scroll='xwheel_zoom',
                 tooltips=TOOLTIPS, output_backend=backend)
 
