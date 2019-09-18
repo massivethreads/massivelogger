@@ -158,8 +158,9 @@ class TimelineTraceViewer:
             bar_src, label_src = map(bokeh.models.ColumnDataSource, self.__get_main_data(tab_num))
 
             fig.hbar(
-                y='rank0_pos', left="t0", right="t1", height='height',
-                legend='kind', color=color_mapper, alpha=0.8, source=bar_src)
+                y='rank0_pos', left="t0", right="t1", height='height', legend='kind',
+                color=color_mapper, hover_color=color_mapper, alpha=0.8, hover_alpha=1.0,
+                hover_line_color="firebrick", source=bar_src)
 
             migration_seg = fig.segment(
                 x0='t1', x1='t1', y0='rank0_pos', y1='rank1_pos',
