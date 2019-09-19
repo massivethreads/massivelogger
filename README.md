@@ -2,6 +2,10 @@
 
 Lightweight Logging Library for Multi-Threading.
 
+## Screenshot of Trace Viewer
+
+![Screenshot of Trace Viewer](./examples/mandelbrot/mlog-example.png "A timeline trace plot of the Mandelbrot example parallelized by OpenMP (x: time, y: thread)")
+
 ## Getting Started
 ```sh
 cd examples/mandelbrot
@@ -237,4 +241,4 @@ end_buf    ... |   NULL    |  format   |   arg1    |   arg2    |    ...    |   N
 
 ## LICENSE
 
-MassiveLogger is distributed under the 2-Clause BSD License. See LICENSE for further information.
+MassiveLogger is distributed under the 2-Clause BSD License. See [LICENSE](./LICENSE) for further information.
