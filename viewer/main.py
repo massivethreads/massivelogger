@@ -95,7 +95,7 @@ class TimelineTrace:
 
         sub_data = pandas.concat(df.iloc[idx_start+idxs] for df, idx_start, idxs
                                  in zip(self.__data.values(), index_start, local_sampled_idxs))
-        return TimelineTraceSlice(sub_data)
+        return TimelineTraceSlice(sub_data), num_total
 
     def get_empty_time_slice(self):
         return TimelineTraceSlice(pandas.DataFrame(columns=self.__columns))
@@ -200,6 +200,8 @@ class TimelineTraceViewer:
         range_tool = bokeh.models.RangeTool(x_range=webgl_main_tab.fig.x_range)
         rt_fig.add_tools(range_tool)
 
+        self.__sample_info_div = bokeh.models.widgets.Div(text=self.__get_sample_info())
+
         def create_slider(name, **kwargs):
             slider = bokeh.models.widgets.Slider(value=self.__slider_values[name], **kwargs)
             slider.on_change('value', functools.partial(self.__on_change_slider, name))
@@ -234,7 +236,8 @@ class TimelineTraceViewer:
         row = bokeh.layouts.row
         column = bokeh.layouts.column
         left_layout = column(main_tabs, rt_fig)
-        right_layout = column(num_main_bar_samples_slider, label_rate_slider,
+        right_layout = column(self.__sample_info_div,
+                              num_main_bar_samples_slider, label_rate_slider,
                               num_rt_bar_samples_slider, num_conc_slider,
                               migrate_checkbox_group,
                               kind_all_button, self.__kind_checkbox_group)
@@ -243,38 +246,52 @@ class TimelineTraceViewer:
         print("Viewer is initialized.")
 
     def __get_main_data(self, tab_num):
-        bar_sl = self.__get_sampled_time_slice(
+        is_active = tab_num == self.__active_main_tab
+        bar_sl, num_total = self.__get_sampled_time_slice(
             self.__main_time_range, self.__slider_values['num_main_bar_samples']) \
-            if tab_num == self.__active_main_tab else self.__get_empty_data()
+            if is_active else self.__get_empty_data()
+        if is_active:
+            self.__num_main_actual_events = num_total
 
         num_label_samples = math.ceil(bar_sl.size() * self.__slider_values['label_rate'])
         label_sl = bar_sl.get_sampled_slice(num_label_samples)
         return bar_sl.dataframe(), label_sl.dataframe()
 
     def __get_rangetool_data(self, time_range):
-        rangetool_sl = self.__get_sampled_time_slice(
+        rangetool_sl, _ = self.__get_sampled_time_slice(
             self.__rt_time_range, self.__slider_values['num_rt_bar_samples'])
         return rangetool_sl.dataframe()
 
     def __get_sampled_time_slice(self, time_range, num_samples):
-        sl = self.__trace.get_sampled_time_slice(time_range, self.__visible_kinds, num_samples)
+        sl, num_total = self.__trace.get_sampled_time_slice(time_range, self.__visible_kinds, num_samples)
         sl.add_rank_pos(self.__slider_values['num_conc'])
-        return sl
+        return sl, num_total
 
     def __get_empty_data(self):
         sl = self.__trace.get_empty_time_slice()
         sl.add_rank_pos(self.__slider_values['num_conc'])
-        return sl
+        return sl, 0
 
     def __update_main_data(self):
         for i, ti in enumerate(self.__main_tabs):
             ti.bar_src.data, ti.label_src.data = \
                 map(bokeh.models.ColumnDataSource.from_df, self.__get_main_data(i))
+        self.__sample_info_div.text = self.__get_sample_info()
 
     def __update_rangetool_data(self):
         self.__rt_bar_src.data = \
             bokeh.models.ColumnDataSource.from_df(
                 self.__get_rangetool_data(self.__rt_time_range))
+
+    def __get_sample_info(self):
+        n_actual = self.__num_main_actual_events
+        n_limit = self.__slider_values['num_main_bar_samples']
+        if n_actual > n_limit:
+            msg = "{:.3f} % sampled".format(n_limit / n_actual * 100)
+        else:
+            msg = "<strong>accurate</strong>"
+        return "# of actual events for main plot: {}<br/>" \
+            "({})".format(n_actual, msg)
 
     def __on_change_time_range(self, attr, old, new):
         if attr == 'start':
