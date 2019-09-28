@@ -122,7 +122,17 @@ class TimelineTraceViewer:
         self.__kinds = self.__trace.get_kinds()
         self.__visible_kinds = set(self.__kinds)
 
-        kind_colors = bokeh.palettes.viridis(len(self.__kinds))
+        def big_palette(size, palette_func):
+            if size < 256:
+                return palette_func(size)
+            p = palette_func(256)
+            colors = []
+            for i in range(size):
+                idx = int(i * 256.0 / size)
+                colors.append(p[idx])
+            return colors
+
+        kind_colors = big_palette(len(self.__kinds), bokeh.palettes.viridis)
         color_mapper = bokeh.transform.factor_cmap(
             field_name='kind', factors=self.__kinds, palette=kind_colors)
 
