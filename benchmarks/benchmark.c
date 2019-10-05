@@ -1,4 +1,4 @@
-#define _XOPEN_SOURCE 700 // To use clock_gettime in c99
+#define _XOPEN_SOURCE 700 // To use clock_gettime
 #include <stdio.h>
 #include <pthread.h>
 

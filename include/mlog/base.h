@@ -52,8 +52,8 @@ static inline void mlog_buffer_init(mlog_buffer_t* buf, size_t buf_size) {
 
 static inline void mlog_init(mlog_data_t* md, int num_ranks, size_t buf_size) {
   md->num_ranks = num_ranks;
-  md->begin_buf = (mlog_buffer_t*)malloc(num_ranks * sizeof(mlog_buffer_t));
-  md->end_buf   = (mlog_buffer_t*)malloc(num_ranks * sizeof(mlog_buffer_t));
+  md->begin_buf = (mlog_buffer_t*)aligned_alloc(MLOG_CACHELINE_SIZE, num_ranks * sizeof(mlog_buffer_t));
+  md->end_buf   = (mlog_buffer_t*)aligned_alloc(MLOG_CACHELINE_SIZE, num_ranks * sizeof(mlog_buffer_t));
   for (int rank = 0; rank < num_ranks; rank++) {
     mlog_buffer_init(&md->begin_buf[rank], buf_size);
     mlog_buffer_init(&md->end_buf[rank], buf_size);
