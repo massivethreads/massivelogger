@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <unistd.h>
 
 #define MLOG_CACHELINE_SIZE 64
 
@@ -280,6 +281,27 @@ static inline void mlog_flush_all(mlog_data_t* md, FILE* stream) {
     mlog_flush(md, rank, stream);
   }
   mlog_clear_begin_buffer_all(md);
+}
+
+/*
+ * mlog_warmup
+ */
+
+static inline void _mlog_warmup_impl(mlog_buffer_t* buf) {
+  if (buf->first != buf->last) {
+    fprintf(stderr, "MassiveLogger: mlog_warmup() is called while buffers are not cleared");
+    abort();
+  }
+  /* write a single word per page to cause pagefault */
+  int pagesize = sysconf(_SC_PAGESIZE);
+  for (size_t i = 0; i < buf->size; i += pagesize) {
+    ((char*)(buf->first))[i] = 0;
+  }
+}
+
+static inline void mlog_warmup(mlog_data_t* md, int rank) {
+  _mlog_warmup_impl(&md->begin_buf[rank]);
+  _mlog_warmup_impl(&md->end_buf[rank]);
 }
 
 #ifdef __cplusplus
