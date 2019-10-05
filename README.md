@@ -138,6 +138,20 @@ Parameters:
 Return value:
 * Value loaded from buffer.
 
+### mlog_warmup
+```c
+void mlog_warmup(mlog_data_t* md, int rank);
+```
+
+Write some values to entire buffers to avoid page faults while recording.
+
+Parameters:
+* `md`   : Global log data for MassiveLogger.
+* `rank` : e.g., worker ID or thread ID.
+
+Note:
+* You should be aware of NUMA effect; that is, if the memory allocation policy is `first-touch` policy, buffers are allocated to a NUMA node where `mlog_warmup()` is called. If you warm-up all threads' buffers in the main thread, all of buffers are allocated to a single NUMA node, which causes performance degradation in NUMA environment.
+
 ## High-level API
 
 ### mlog_begin_tl

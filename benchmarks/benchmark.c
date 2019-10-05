@@ -2,11 +2,14 @@
 #include <stdio.h>
 #include <pthread.h>
 
+#define WARMUP 1
+
 /* #define MLOG_DISABLE_CHECK_BUFFER_SIZE 1 */
 #define MLOG_DISABLE_REALLOC_BUFFER 1
 #include "mlog/mlog.h"
 
 mlog_data_t g_md;
+pthread_barrier_t g_barrier;
 
 typedef struct {
   int rank;
@@ -17,6 +20,12 @@ void* thread_fn(void* _arg) {
   thread_arg_t* arg = (thread_arg_t*)_arg;
   int rank = arg->rank;
   int n_iter = arg->n_iter;
+
+#if WARMUP
+  mlog_warmup(&g_md, rank);
+#endif
+
+  pthread_barrier_wait(&g_barrier);
 
   uint64_t t1 = mlog_clock_gettime_in_nsec();
 
@@ -42,6 +51,8 @@ int main() {
          n_threads, n_iter);
 
   mlog_init(&g_md, n_threads, (2 << 28));
+
+  pthread_barrier_init(&g_barrier, NULL, n_threads);
 
   pthread_t threads[n_threads];
   thread_arg_t args[n_threads];
