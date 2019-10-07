@@ -1,12 +1,11 @@
-#define _XOPEN_SOURCE 700 // To use clock_gettime
 #include <stdio.h>
 #include <pthread.h>
-
-#define WARMUP 1
 
 /* #define MLOG_DISABLE_CHECK_BUFFER_SIZE 1 */
 #define MLOG_DISABLE_REALLOC_BUFFER 1
 #include "mlog/mlog.h"
+
+#define WARMUP 1
 
 mlog_data_t g_md;
 pthread_barrier_t g_barrier;
