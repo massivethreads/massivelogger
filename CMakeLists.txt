@@ -12,10 +12,10 @@ if(COMPILE_AS_CPP)
 
   set_source_files_properties(${test_files} PROPERTIES LANGUAGE CXX)
 else()
-  set(CMAKE_C_STANDARD 11)
+  set(CMAKE_C_STANDARD 99)
   set(CMAKE_C_STANDARD_REQUIRED ON)
   set(CMAKE_C_EXTENSIONS OFF)
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -D_XOPEN_SOURCE=700")
 endif()
 
 include_directories(include)
