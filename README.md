@@ -34,15 +34,17 @@ make check
 typedef struct mlog_data { /* implementation defined */ } mlog_data_t;
 ```
 
+Log buffering structure for a whole MassiveLogger environment.
+
 ### mlog_init
 ```c
 void mlog_init(mlog_data_t* md, int num_ranks, size_t buf_size);
 ```
 
 Parameters:
-* `md`        : Global log data for MassiveLogger.
-* `num_ranks` : The number of ranks (e.g., workers or threads) who use MassiveLogger.
-* `buf_size`  : Size of the begin buffer and the end buffer.
+* `md`        : Pointer to a `mlog_data_t` variable at global scope.
+* `num_ranks` : The number of ranks (e.g., the number of workers/threads using MassiveLogger).
+* `buf_size`  : Initial size of buffering memories in the `mlog_data_t` variable.
 
 ### MLOG_BEGIN
 ```c
@@ -50,12 +52,12 @@ void* MLOG_BEGIN(mlog_data_t* md, int rank, ...);
 ```
 
 Parameters:
-* `md`   : Global log data for MassiveLogger.
+* `md`   : Pointer to a `mlog_data_t` variable at global scope.
 * `rank` : e.g., worker ID or thread ID.
 * `...`  : Arguments to record.
 
 Return value:
-* A pointer to the recorded data (`begin_ptr`). This should be passed to `MLOG_END` function.
+* Pointer to the recorded data (`begin_ptr`). This should be passed to `MLOG_END` function.
 
 ### MLOG_END
 ```c
@@ -63,7 +65,7 @@ void MLOG_END(mlog_data_t* md, int rank, void* begin_ptr, void* (*decoder)(FILE*
 ```
 
 Parameters:
-* `md`        : Global log data for MassiveLogger.
+* `md`        : Pointer to a `mlog_data_t` variable at global scope.
 * `rank`      : e.g., worker ID or thread ID.
 * `begin_ptr` : The return value of `MLOG_BEGIN` function.
 * `decoder`   : Function pointer to a decorder function that transfers recorded data into formatted string. This is called when outputting recorded data to files. See below for more details.
@@ -90,7 +92,7 @@ void MLOG_PRINTF(mlog_data_t* md, int rank, char* format, ...);
 ```
 
 Parameters:
-* `md`     : Global log data for MassiveLogger.
+* `md`     : Pointer to a `mlog_data_t` variable at global scope.
 * `rank`   : e.g., worker ID or thread ID.
 * `format` : Format string (usually passed to `printf` function).
 * `...`    : Arguments to record.
@@ -112,7 +114,7 @@ void mlog_flush(mlog_data_t* md, int rank, FILE* stream);
 ```
 
 Parameters:
-* `md`     : Global log data for MassiveLogger.
+* `md`     : Pointer to a `mlog_data_t` variable at global scope.
 * `rank`   : Logs in the end buffer of `rank` are flushed.
 * `stream` : Logs are written to `stream`.
 
@@ -122,7 +124,7 @@ void mlog_flush_all(mlog_data_t* md, FILE* stream);
 ```
 
 Parameters:
-* `md`     : Global log data for MassiveLogger.
+* `md`     : Pointer to a `mlog_data_t` variable at global scope.
 * `stream` : All logs are written to `stream`.
 
 ### MLOG_READ_ARG
@@ -146,7 +148,7 @@ void mlog_warmup(mlog_data_t* md, int rank);
 Write some values to entire buffers to avoid page faults while recording.
 
 Parameters:
-* `md`   : Global log data for MassiveLogger.
+* `md`   : Pointer to a `mlog_data_t` variable at global scope.
 * `rank` : e.g., worker ID or thread ID.
 
 Note:
@@ -162,7 +164,7 @@ void* mlog_begin_tl(mlog_data_t* md, int rank);
 `rank` and a timestamp (the return value of `mlog_clock_gettime_in_nsec()`) are recorded to the begin buffer.
 
 Parameters:
-* `md`   : Global log data for MassiveLogger.
+* `md`   : Pointer to a `mlog_data_t` variable at global scope.
 * `rank` : e.g., worker ID or thread ID.
 
 Return value:
@@ -176,7 +178,7 @@ void mlog_end_tl(mlog_data_t* md, int rank, void* begin_ptr, char* event_name);
 `rank`, a timestamp (the return value of `mlog_clock_gettime_in_nsec()`), and `event_name` are recorded to the end buffer.
 
 Parameters:
-* `md`         : Global log data for MassiveLogger.
+* `md`         : Pointer to a `mlog_data_t` variable at global scope.
 * `rank`       : e.g., worker ID or thread ID.
 * `begin_ptr`  : The return value of `mlog_begin_tl` function.
 * `event_name` : Event name to be recorded.
