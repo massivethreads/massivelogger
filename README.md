@@ -44,7 +44,7 @@ void mlog_init(mlog_data_t* md, int num_ranks, size_t buf_size);
 Parameters:
 * `md`        : Pointer to a `mlog_data_t` variable at global scope.
 * `num_ranks` : The number of ranks (e.g., the number of workers/threads using MassiveLogger).
-* `buf_size`  : Initial size of buffering memories in the `mlog_data_t` variable.
+* `buf_size`  : The minimum unit of buffer memory size. The current implementation first allocates 2 * `buf_size` bytes of memory for each rank.
 
 ### MLOG_BEGIN
 ```c
