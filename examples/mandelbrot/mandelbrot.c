@@ -72,7 +72,6 @@ int main(int argc, char* argv[]) {
   mlog_init(&g_md, n_threads, (2 << 20));
 
   int opt;
-  extern char *optarg;
   while ((opt = getopt(argc, argv, "x:y:d:s:h")) != EOF) {
     switch (opt) {
       case 'x':
@@ -89,7 +88,7 @@ int main(int argc, char* argv[]) {
         break;
       case 'h':
       default:
-        printf("Usage: ./chol -x <nx> -y <ny> -d <depth> -s <scale>\n");
+        printf("Usage: ./mandelbrot -x <nx> -y <ny> -d <depth> -s <scale>\n");
         exit(1);
     }
   }
