@@ -20,6 +20,8 @@ import bokeh.layouts
 import bokeh.palettes
 import bokeh.transform
 
+import intervaltree
+
 class TimelineTraceSlice:
     def __init__(self, df):
         self.__df = df
@@ -57,44 +59,27 @@ class TimelineTrace:
         self.__time_min = df['t0'].min()
         self.__time_max = df['t1'].max()
 
-        df.sort_values('t0', inplace=True)
-        df.rename_axis('line', inplace=True)
-
-        self.__data = collections.OrderedDict((x for x in df.groupby('kind'))) # workaround
-        self.__t1_index = collections.OrderedDict()
-        for kind, kind_df in self.__data.items():
-            kind_df.reset_index(inplace=True)
-            self.__t1_index[kind] = kind_df['t1'].sort_values()
-
+        self.__data = [(kind, kind_df, intervaltree.IntervalTree(kind_df['t0'].to_numpy(), kind_df['t1'].to_numpy()))
+                       for kind, kind_df in df.groupby('kind')]
         print("Trace is loaded.")
         return self
 
     def get_sampled_time_slice(self, time_range, kinds, num_samples):
         print("Making slices...")
-        index_start = numpy.fromiter(
-            ((t1_ser.searchsorted(time_range[0]).item() if kind in kinds else 0)
-             for kind, t1_ser in self.__t1_index.items()), dtype=int)
-        index_end = numpy.fromiter(
-            ((kind_df['t0'].searchsorted(time_range[1], 'right').item() if kind in kinds else 0)
-             for kind, kind_df in self.__data.items()), dtype=int)
+        in_ranges = [(intervaltree.overlaps(time_range[0], time_range[1]), kind_df)
+                     for kind, kind_df, intervaltree in self.__data if kind in kinds]
+        num_total = sum(len(in_range) for in_range, kind_df in in_ranges)
 
-        num_list = index_end - index_start
-        num_sum_right = num_list.cumsum()
-        num_total = num_sum_right[len(num_sum_right)-1] if num_sum_right.size > 0 else 0
-        num_sum_left = [(0 if i == 0 else num_sum_right[i-1]) for i in range(len(num_sum_right))]
+        dfs = []
+        for in_range, kind_df in in_ranges:
+            if num_samples < num_total:
+                nsamples = int(len(in_range) * num_samples / num_total)
+                sampled_idxs = numpy.random.choice(in_range, nsamples)
+            else:
+                sampled_idxs = in_range
+            dfs.append(kind_df.iloc[sampled_idxs])
 
-        sampled_idxs = range(num_total)
-        if num_total > num_samples:
-            sampled_idxs = random.sample(sampled_idxs, num_samples)
-        sampled_idxs = numpy.array(sampled_idxs)
-        sampled_idxs.sort()
-
-        si_left  = numpy.searchsorted(sampled_idxs, num_sum_left, 'left')
-        si_right = numpy.searchsorted(sampled_idxs, num_sum_right, 'left')
-        local_sampled_idxs = [sampled_idxs[l:r]-ns for l, r, ns in zip(si_left, si_right, num_sum_left)]
-
-        sub_data = pandas.concat(df.iloc[idx_start+idxs] for df, idx_start, idxs
-                                 in zip(self.__data.values(), index_start, local_sampled_idxs))
+        sub_data = pandas.concat(dfs)
         return TimelineTraceSlice(sub_data), num_total
 
     def get_empty_time_slice(self):
@@ -104,7 +89,7 @@ class TimelineTrace:
         return self.__time_min, self.__time_max
 
     def get_kinds(self):
-        return list(self.__data.keys())
+        return [kind for kind, kind_df, intervaltree in self.__data]
 
 class TimelineTraceViewer:
     __refreshed = { 'main': True, 'sub': True }
@@ -137,7 +122,6 @@ class TimelineTraceViewer:
             field_name='kind', factors=self.__kinds, palette=kind_colors)
 
         TOOLTIPS = [
-            ('line', "@line"),
             ("t", "(@t0,@t1)"),
             ("duration", "@duration"),
             ("rank", "(@rank0,@rank1)"),
