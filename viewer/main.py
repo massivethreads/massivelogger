@@ -66,8 +66,9 @@ class TimelineTrace:
 
     def get_sampled_time_slice(self, time_range, kinds, num_samples):
         print("Making slices...")
-        in_ranges = [(intervaltree.overlaps(time_range[0], time_range[1]), kind_df)
-                     for kind, kind_df, intervaltree in self.__data if kind in kinds]
+        in_ranges = [((intervaltree.overlaps(time_range[0], time_range[1]), kind_df)
+                      if kind in kinds else ([], kind_df.iloc[0:0]))
+                     for kind, kind_df, intervaltree in self.__data]
         num_total = sum(len(in_range) for in_range, kind_df in in_ranges)
 
         dfs = []
