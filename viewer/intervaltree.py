@@ -13,6 +13,7 @@ class IntervalTree:
 
 class IntervalTreeNode:
     def __init__(self, t0s, t1s, ids):
+        assert(len(t0s) > 0)
         self.ids           = ids
         self.t0s           = t0s
         self.t1s           = t1s
@@ -20,6 +21,7 @@ class IntervalTreeNode:
         self.tmax          = t1s.max()
         self.pivot         = numpy.median(t0s / 2 + t1s / 2)
         self.num           = len(t0s)
+        self.__is_partitioned = False
         self.left_child    = None
         self.right_child   = None
         self.center_t0s    = None
@@ -28,6 +30,8 @@ class IntervalTreeNode:
         self.center_t1_ids = None
 
     def overlaps(self, query_t0, query_t1, leaf_size):
+        if query_t1 < self.tmin or self.tmax < query_t0:
+            return []
         if self.num <= leaf_size:
             # leaf node
             cond1 = query_t0 < self.t1s
@@ -35,31 +39,36 @@ class IntervalTreeNode:
             mask  = numpy.logical_and(cond1, cond2)
             return self.ids[mask]
         else:
-            if self.left_child == None:
+            if not self.__is_partitioned:
                 if query_t0 <= self.tmin and self.tmax <= query_t1:
                     # return all intervals
                     return self.ids
                 else:
                     self.partition_children()
+                    self.__is_partitioned = True
 
             if query_t1 < self.pivot:
                 # only left
-                left_ids = self.left_child.overlaps(query_t0, query_t1, leaf_size)
+                left_ids = self.left_child.overlaps(query_t0, query_t1, leaf_size) \
+                           if self.left_child else []
                 # center
                 boundary   = self.center_t0s.searchsorted(query_t1, side="right")
                 center_ids = self.center_t0_ids[:boundary]
                 return numpy.concatenate([left_ids, center_ids])
             elif self.pivot < query_t0:
                 # only right
-                right_ids = self.right_child.overlaps(query_t0, query_t1, leaf_size)
+                right_ids = self.right_child.overlaps(query_t0, query_t1, leaf_size) \
+                            if self.right_child else []
                 # center
                 boundary   = self.center_t1s.searchsorted(query_t0, side="right")
                 center_ids = self.center_t1_ids[boundary:]
                 return numpy.concatenate([right_ids, center_ids])
             else:
                 # both
-                left_ids  = self.left_child.overlaps(query_t0, query_t1, leaf_size)
-                right_ids = self.right_child.overlaps(query_t0, query_t1, leaf_size)
+                left_ids  = self.left_child.overlaps(query_t0, query_t1, leaf_size) \
+                            if self.left_child else []
+                right_ids = self.right_child.overlaps(query_t0, query_t1, leaf_size) \
+                            if self.right_child else []
                 # center
                 center_ids = self.center_t0_ids
                 return numpy.concatenate([left_ids, right_ids, center_ids])
@@ -73,12 +82,14 @@ class IntervalTreeNode:
         left_t0s = self.t0s[left_mask]
         left_t1s = self.t1s[left_mask]
         left_ids = self.ids[left_mask]
-        self.left_child = IntervalTreeNode(left_t0s, left_t1s, left_ids)
+        if len(left_ids) > 0:
+            self.left_child = IntervalTreeNode(left_t0s, left_t1s, left_ids)
         # right child
         right_t0s = self.t0s[right_mask]
         right_t1s = self.t1s[right_mask]
         right_ids = self.ids[right_mask]
-        self.right_child = IntervalTreeNode(right_t0s, right_t1s, right_ids)
+        if len(right_ids) > 0:
+            self.right_child = IntervalTreeNode(right_t0s, right_t1s, right_ids)
         # center intervals
         center_t0s = self.t0s[center_mask]
         center_t1s = self.t1s[center_mask]
