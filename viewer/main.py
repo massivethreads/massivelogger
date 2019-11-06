@@ -214,9 +214,10 @@ class TimelineTraceViewer:
         num_conc_slider = create_slider('num_conc',
             start=1, end=30, step=1, title="# of concurrent events")
 
-        migrate_checkbox_group = \
-            bokeh.models.widgets.CheckboxGroup(labels=["Show migrations"], active=[])
-        migrate_checkbox_group.on_click(self.__on_click_migrate_checkboxes)
+        visibility_checkbox_group = \
+            bokeh.models.widgets.CheckboxGroup(
+                labels=["Show legend", "Show migrations"], active=[0])
+        visibility_checkbox_group.on_click(self.__on_click_visibility_checkboxes)
 
         kind_all_button = \
             bokeh.models.widgets.CheckboxButtonGroup(labels=["Show all"], active=[0])
@@ -234,7 +235,7 @@ class TimelineTraceViewer:
         right_layout = column(self.__sample_info_div,
                               num_main_bar_samples_slider, label_rate_slider,
                               num_rt_bar_samples_slider, num_conc_slider,
-                              migrate_checkbox_group,
+                              visibility_checkbox_group,
                               kind_all_button, self.__kind_checkbox_group)
         curdoc.add_root(row(left_layout, right_layout))
         curdoc.add_periodic_callback(self.__on_timer, 100)
@@ -304,10 +305,12 @@ class TimelineTraceViewer:
         self.__slider_values[name] = new
         self.__request_refresh_all()
 
-    def __on_click_migrate_checkboxes(self, active_list):
-        is_visible = 0 in active_list
+    def __on_click_visibility_checkboxes(self, active_list):
+        is_legend_visible = 0 in active_list
+        is_migration_visible = 1 in active_list
         for ti in self.__main_tabs:
-            ti.migration_seg.visible = is_visible
+            ti.fig.legend.visible = is_legend_visible
+            ti.migration_seg.visible = is_migration_visible
 
     def __on_click_kind_checkboxes(self, active_list):
         self.__visible_kinds = set(self.__kinds[i] for i in active_list)
