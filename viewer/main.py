@@ -93,7 +93,8 @@ class TimelineTrace:
         return [kind for kind, kind_df, intervaltree in self.__data]
 
 class TimelineTraceViewer:
-    __refreshed = { 'main': True, 'sub': True }
+    __need_refresh = { 'main': False, 'sub': False }
+    __needed_refresh = { 'main': False, 'sub': False }
     __slider_values = {
         'num_main_bar_samples': 10000,
         'label_rate': 0.0,
@@ -321,19 +322,21 @@ class TimelineTraceViewer:
             list(range(len(self.__kinds))) if 0 in active_list else []
 
     def __request_refresh_main(self):
-        self.__refreshed['main'] = False
+        self.__need_refresh['main'] = True
 
     def __request_refresh_all(self):
         self.__request_refresh_main()
-        self.__refreshed['sub'] = False
+        self.__need_refresh['sub'] = True
 
     def __on_timer(self):
         def refresh(plot_name, update_func):
-            if not self.__refreshed[plot_name]:
+            refresh_now = self.__needed_refresh[plot_name] and not self.__need_refresh[plot_name]
+            self.__needed_refresh[plot_name] = self.__need_refresh[plot_name]
+            self.__need_refresh[plot_name] = False
+            if refresh_now:
                 start_time = datetime.datetime.now()
                 print("Refreshing {} plot...".format(plot_name))
                 update_func()
-                self.__refreshed[plot_name] = True
                 end_time = datetime.datetime.now()
                 print("Refreshed {} plot in {} sec."
                       .format(plot_name, (end_time-start_time).total_seconds()))
