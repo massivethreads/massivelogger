@@ -59,6 +59,9 @@ class TimelineTrace:
         self.__time_min = df['t0'].min()
         self.__time_max = df['t1'].max()
 
+        # Store True/False as string because GroupFilter currently accepts only string
+        df = df.assign(is_migration=numpy.where(df.loc[:, 'rank0'] != df.loc[:, 'rank1'], "True", "False"))
+
         self.__data = [(kind, kind_df, intervaltree.IntervalTree(kind_df['t0'].to_numpy(), kind_df['t1'].to_numpy()))
                        for kind, kind_df in df.groupby('kind')]
         print("Trace is loaded.")
@@ -153,15 +156,20 @@ class TimelineTraceViewer:
 
             bar_src, label_src = map(bokeh.models.ColumnDataSource, self.__get_main_data(tab_num))
 
+            bar_view = bokeh.models.CDSView(source=bar_src,
+                filters=[bokeh.models.GroupFilter(column_name='is_migration', group='False')])
+            migration_view = bokeh.models.CDSView(source=bar_src,
+                filters=[bokeh.models.GroupFilter(column_name='is_migration', group='True')])
+
             fig.hbar(
                 y='rank0_pos', left="t0", right="t1", height='height', legend='kind',
                 color=color_mapper, hover_color=color_mapper, alpha=0.8, hover_alpha=1.0,
-                hover_line_color="firebrick", source=bar_src)
+                hover_line_color="firebrick", source=bar_src, view=bar_view)
 
             migration_seg = fig.segment(
-                x0='t1', x1='t1', y0='rank0_pos', y1='rank1_pos',
-                color=color_mapper, source=bar_src)
-            migration_seg.visible = False
+                x0='t0', x1='t1', y0='rank0_pos', y1='rank1_pos',
+                color=color_mapper, hover_line_color="firebrick",
+                source=bar_src, view=migration_view)
 
             labels = bokeh.models.LabelSet(
                 y='rank0_pos', x='t0', text='kind', text_baseline='middle',
@@ -187,11 +195,19 @@ class TimelineTraceViewer:
         init_rt_bar_data = self.__get_rangetool_data(init_time_range)
         self.__rt_bar_src = bokeh.models.ColumnDataSource(init_rt_bar_data)
 
+        rt_bar_view = bokeh.models.CDSView(source=self.__rt_bar_src,
+            filters=[bokeh.models.GroupFilter(column_name='is_migration', group='False')])
+        rt_migration_view = bokeh.models.CDSView(source=self.__rt_bar_src,
+            filters=[bokeh.models.GroupFilter(column_name='is_migration', group='True')])
+
         rt_fig = bokeh.plotting.figure(plot_width=1200, plot_height=150,
                                        toolbar_location=None, output_backend='webgl')
 
-        self.__rt_bar = rt_fig.hbar(y="rank0_pos", left="t0", right="t1", height=0.5,
-                                    color=color_mapper, alpha=0.8, source=self.__rt_bar_src)
+        rt_fig.hbar(y="rank0_pos", left="t0", right="t1", height=0.5, color=color_mapper,
+                    alpha=0.8, source=self.__rt_bar_src, view=rt_bar_view)
+
+        rt_fig.segment(x0='t0', x1='t1', y0='rank0_pos', y1='rank1_pos', color=color_mapper,
+                       source=self.__rt_bar_src, view=rt_migration_view)
 
         range_tool = bokeh.models.RangeTool(x_range=webgl_main_tab.fig.x_range)
         rt_fig.add_tools(range_tool)
@@ -217,7 +233,7 @@ class TimelineTraceViewer:
 
         visibility_checkbox_group = \
             bokeh.models.widgets.CheckboxGroup(
-                labels=["Show legend", "Show migrations"], active=[0])
+                labels=["Show legend", "Show migrations"], active=[0, 1])
         visibility_checkbox_group.on_click(self.__on_click_visibility_checkboxes)
 
         kind_all_button = \
