@@ -126,10 +126,11 @@ class TimelineTraceViewer:
         color_mapper = bokeh.transform.factor_cmap(
             field_name='kind', factors=self.__kinds, palette=kind_colors)
 
+        xformat = "0,0[.][000000000]"
         TOOLTIPS = [
-            ("t", "(@t0,@t1)"),
-            ("duration", "@duration"),
-            ("rank", "(@rank0,@rank1)"),
+            ("t", "@t0{{{0}}} -> @t1{{{0}}}".format(xformat)),
+            ("duration", "@duration{{{0}}}".format(xformat)),
+            ("rank", "@rank0 -> @rank1"),
             ("kind", "@kind")
         ]
 
@@ -154,6 +155,8 @@ class TimelineTraceViewer:
             fig.ygrid.grid_line_color = 'black'
             fig.ygrid.ticker = yticker
 
+            fig.xaxis.formatter = bokeh.models.formatters.NumeralTickFormatter(format=xformat)
+
             bar_src, label_src = map(bokeh.models.ColumnDataSource, self.__get_main_data(tab_num))
 
             bar_view = bokeh.models.CDSView(source=bar_src,
@@ -167,7 +170,7 @@ class TimelineTraceViewer:
                 hover_line_color="firebrick", source=bar_src, view=bar_view)
 
             migration_seg = fig.segment(
-                x0='t0', x1='t1', y0='rank0_pos', y1='rank1_pos',
+                x0='t0', x1='t1', y0='rank0_pos', y1='rank1_pos', legend='kind',
                 color=color_mapper, hover_line_color="firebrick",
                 source=bar_src, view=migration_view)
 
@@ -202,6 +205,8 @@ class TimelineTraceViewer:
 
         rt_fig = bokeh.plotting.figure(plot_width=1200, plot_height=150,
                                        toolbar_location=None, output_backend='webgl')
+
+        rt_fig.xaxis.formatter = bokeh.models.formatters.NumeralTickFormatter(format=xformat)
 
         rt_fig.hbar(y="rank0_pos", left="t0", right="t1", height=0.5, color=color_mapper,
                     alpha=0.8, source=self.__rt_bar_src, view=rt_bar_view)
