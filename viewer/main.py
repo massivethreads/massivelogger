@@ -78,7 +78,7 @@ class TimelineTrace:
         for in_range, kind_df in in_ranges:
             if num_samples < num_total:
                 nsamples = int(len(in_range) * num_samples / num_total)
-                sampled_idxs = numpy.random.choice(in_range, nsamples)
+                sampled_idxs = numpy.random.choice(in_range, nsamples, replace=False)
             else:
                 sampled_idxs = in_range
             dfs.append(kind_df.iloc[sampled_idxs])
