@@ -5,7 +5,6 @@
 
 import sys
 import collections
-import random
 import functools
 import traceback
 import math
@@ -49,7 +48,7 @@ class TimelineTraceSlice:
 
 class TimelineTrace:
     def read_csv(self, input_path):
-        COLUMNS = ['rank0', 't0', 'rank1', 't1', 'kind']
+        COLUMNS = ['rank0', 't0', 'rank1', 't1', 'kind', 'misc']
         print("Reading CSV...")
         df = pandas.read_csv(input_path, names=COLUMNS)
 
@@ -131,7 +130,8 @@ class TimelineTraceViewer:
             ("t", "@t0{{{0}}} -> @t1{{{0}}}".format(xformat)),
             ("duration", "@duration{{{0}}}".format(xformat)),
             ("rank", "@rank0 -> @rank1"),
-            ("kind", "@kind")
+            ("kind", "@kind"),
+            ("misc", "@misc"),
         ]
 
         init_time_range = self.__trace.get_time_range()
