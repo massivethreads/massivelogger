@@ -68,9 +68,9 @@ class TimelineTrace:
 
     def get_sampled_time_slice(self, time_range, kinds, num_samples):
         print("Making slices...")
-        in_ranges = [((intervaltree.overlaps(time_range[0], time_range[1]), kind_df)
+        in_ranges = [((itree.overlaps(time_range[0], time_range[1]), kind_df)
                       if kind in kinds else ([], kind_df.iloc[0:0]))
-                     for kind, kind_df, intervaltree in self.__data]
+                     for kind, kind_df, itree in self.__data]
         num_total = sum(len(in_range) for in_range, kind_df in in_ranges)
 
         dfs = []
@@ -92,7 +92,17 @@ class TimelineTrace:
         return self.__time_min, self.__time_max
 
     def get_kinds(self):
-        return [kind for kind, kind_df, intervaltree in self.__data]
+        return [kind for kind, _, _ in self.__data]
+
+    def get_histogram(self, kinds):
+        duration_max = max([kind_df['duration'].max()
+                            for kind, kind_df, _ in self.__data if kind in kinds])
+        ret = []
+        for kind, kind_df, _ in self.__data:
+            if kind in kinds:
+                hist, edges = numpy.histogram(kind_df['duration'], range=(0, duration_max), bins=300)
+                ret.append((kind, hist, edges[:-1], edges[1:]))
+        return ret
 
 class TimelineTraceViewer:
     __need_refresh = { 'main': False, 'sub': False }
@@ -109,41 +119,41 @@ class TimelineTraceViewer:
         print("Initializing viewer...")
         self.__trace = trace
         self.__kinds = self.__trace.get_kinds()
-        self.__visible_kinds = set(self.__kinds)
+        self.__visible_kinds = list(sorted(self.__kinds))
 
         def big_palette(size, palette_func):
             if size < 256:
                 return palette_func(size)
             p = palette_func(256)
-            colors = []
-            for i in range(size):
-                idx = int(i * 256.0 / size)
-                colors.append(p[idx])
-            return colors
+            return [p[int(i * 256.0 / size)] for i in range(size)]
 
         kind_colors = big_palette(len(self.__kinds), bokeh.palettes.viridis)
         color_mapper = bokeh.transform.factor_cmap(
             field_name='kind', factors=self.__kinds, palette=kind_colors)
 
         xformat = "0,0[.][000000000]"
-        TOOLTIPS = [
-            ("t", "@t0{{{0}}} -> @t1{{{0}}}".format(xformat)),
-            ("duration", "@duration{{{0}}}".format(xformat)),
-            ("rank", "@rank0 -> @rank1"),
-            ("kind", "@kind"),
-            ("misc", "@misc"),
-        ]
 
         init_time_range = self.__trace.get_time_range()
         self.__main_time_range = init_time_range
         self.__rt_time_range = init_time_range
 
+        main_width = 1200
+        main_height = 800
+
         MainTabInfo = collections.namedtuple(
             'MainTabInfo', ('fig', 'migration_seg', 'bar_src', 'label_src', 'panel'))
 
         def make_main_tab(tab_num, backend, title, x_range, y_range):
+            TOOLTIPS = [
+                ("t", "@t0{{{0}}} -> @t1{{{0}}}".format(xformat)),
+                ("duration", "@duration{{{0}}}".format(xformat)),
+                ("rank", "@rank0 -> @rank1"),
+                ("kind", "@kind"),
+                ("misc", "@misc"),
+            ]
+
             fig = bokeh.plotting.figure(
-                plot_width=1200, plot_height=800,
+                plot_width=main_width, plot_height=main_height,
                 x_range=x_range, y_range=y_range,
                 tools='hover,xwheel_zoom,ywheel_zoom,xpan,ypan,reset,crosshair,save,help',
                 active_drag='xpan', active_scroll='xwheel_zoom',
@@ -184,6 +194,36 @@ class TimelineTraceViewer:
             return MainTabInfo(fig=fig, migration_seg=migration_seg,
                                bar_src=bar_src, label_src=label_src, panel=panel)
 
+        def make_statistics_tab():
+            TOOLTIPS = [
+                ("kind", "@kind"),
+                ("count", "@hist"),
+                ("range", "[@left{{{0}}}, @right{{{0}}})".format(xformat)),
+            ]
+
+            fig = bokeh.plotting.figure(
+                plot_width=main_width, plot_height=main_height,
+                y_range=self.__visible_kinds,
+                tooltips=TOOLTIPS, output_backend='svg')
+
+            hists = self.__trace.get_histogram(self.__visible_kinds)
+
+            columns = ['hist', 'top', 'bottom', 'left', 'right', 'kind']
+            data = []
+            for kind, hist, left, right in reversed(hists):
+                max_count = max(hist)
+                for h, l, r in zip(hist, left, right):
+                    data.append((h, (kind, h / max_count), (kind, 0), l, r, kind))
+
+            src = bokeh.models.ColumnDataSource(pandas.DataFrame(data, columns=columns))
+            fig.quad(source=src, top='top', bottom='bottom', left='left', right='right',
+                     fill_color=color_mapper, alpha=0.5)
+
+            fig.xaxis.formatter = bokeh.models.formatters.NumeralTickFormatter(format=xformat)
+            fig.y_range.range_padding = 0.15
+
+            return bokeh.models.Panel(child=fig, title="Statistics")
+
         webgl_main_tab = make_main_tab(0, 'webgl', "WebGL", init_time_range, None)
         webgl_main_tab.fig.x_range.on_change('start', self.__on_change_time_range)
         webgl_main_tab.fig.x_range.on_change('end', self.__on_change_time_range)
@@ -191,8 +231,10 @@ class TimelineTraceViewer:
         svg_main_tab = make_main_tab(
             1, 'svg', "SVG", webgl_main_tab.fig.x_range, webgl_main_tab.fig.y_range)
 
+        statistics_tab = make_statistics_tab()
+
         self.__main_tabs = (webgl_main_tab, svg_main_tab)
-        main_tabs = bokeh.models.Tabs(tabs=[ti.panel for ti in self.__main_tabs])
+        main_tabs = bokeh.models.Tabs(tabs=[ti.panel for ti in self.__main_tabs] + [statistics_tab])
         main_tabs.on_change('active', self.__on_change_main_tab)
 
         init_rt_bar_data = self.__get_rangetool_data(init_time_range)
@@ -335,7 +377,7 @@ class TimelineTraceViewer:
             ti.migration_seg.visible = is_migration_visible
 
     def __on_click_kind_checkboxes(self, active_list):
-        self.__visible_kinds = set(self.__kinds[i] for i in active_list)
+        self.__visible_kinds = list(sorted(self.__kinds[i] for i in active_list))
         self.__request_refresh_all()
 
     def __on_click_show_all_kinds(self, active_list):
@@ -374,4 +416,3 @@ if len(sys.argv) < 2:
     sys.exit("{} [CSV path]".format(sys.argv[0]))
 trace.read_csv(sys.argv[1])
 viewer = TimelineTraceViewer(trace)
-
