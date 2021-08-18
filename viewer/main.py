@@ -94,17 +94,18 @@ class TimelineTrace:
     def get_kinds(self):
         return [kind for kind, _, _ in self.__data]
 
-    def get_histogram(self, kinds):
+    def get_max_duration(self):
+        return max([kind_df['duration'].max() for _, kind_df, _ in self.__data])
+
+    def get_histogram(self, kinds, duration_range, n_bins=300):
         if len(kinds) == 0:
             return []
         else:
-            duration_max = max([kind_df['duration'].max()
-                                for kind, kind_df, _ in self.__data if kind in kinds])
+            dfs = [(kind, kind_df) for kind, kind_df, _ in self.__data if kind in kinds]
             ret = []
-            for kind, kind_df, _ in self.__data:
-                if kind in kinds:
-                    hist, edges = numpy.histogram(kind_df['duration'], range=(0, duration_max), bins=300)
-                    ret.append((kind, hist, edges[:-1], edges[1:]))
+            for kind, kind_df in dfs:
+                hist, edges = numpy.histogram(kind_df['duration'], range=duration_range, bins=n_bins)
+                ret.append((kind, hist, edges[:-1], edges[1:]))
             return ret
 
 class TimelineTraceViewer:
@@ -121,8 +122,8 @@ class TimelineTraceViewer:
     def __init__(self, trace):
         print("Initializing viewer...")
         self.__trace = trace
-        self.__kinds = self.__trace.get_kinds()
-        self.__visible_kinds = list(sorted(self.__kinds))
+        self.__kinds = sorted(self.__trace.get_kinds())
+        self.__visible_kinds = list(self.__kinds)
 
         def big_palette(size, palette_func):
             if size < 256:
@@ -204,27 +205,35 @@ class TimelineTraceViewer:
                 ("range", "[@left{{{0}}}, @right{{{0}}})".format(xformat)),
             ]
 
+            self.__statistics_range = (0, self.__trace.get_max_duration())
+
             fig = bokeh.plotting.figure(
                 plot_width=main_width, plot_height=main_height,
-                y_range=self.__visible_kinds,
-                tooltips=TOOLTIPS, output_backend='svg')
+                x_range=self.__statistics_range, y_range=self.__kinds,
+                tools='hover,xwheel_zoom,ywheel_zoom,xpan,ypan,reset,crosshair,save,help',
+                active_drag='xpan', active_scroll='xwheel_zoom',
+                tooltips=TOOLTIPS, output_backend='webgl')
 
             self.__statistics_src = bokeh.models.ColumnDataSource(self.__get_statistics_data())
             fig.quad(source=self.__statistics_src,
                      top='top', bottom='bottom', left='left', right='right',
-                     fill_color=color_mapper, alpha=0.8)
+                     fill_color=color_mapper, alpha=0.8,
+                     hover_color="firebrick")
 
             fig.xaxis.formatter = bokeh.models.formatters.NumeralTickFormatter(format=xformat)
             fig.y_range.range_padding = 0.12
 
+            fig.x_range.on_change('start', self.__on_change_statistics_range)
+            fig.x_range.on_change('end', self.__on_change_statistics_range)
+
             return bokeh.models.Panel(child=fig, title="Statistics")
 
-        webgl_main_tab = make_main_tab(0, 'webgl', "WebGL", init_time_range, None)
+        webgl_main_tab = make_main_tab(0, 'webgl', "Timeline (WebGL)", init_time_range, None)
         webgl_main_tab.fig.x_range.on_change('start', self.__on_change_time_range)
         webgl_main_tab.fig.x_range.on_change('end', self.__on_change_time_range)
 
         svg_main_tab = make_main_tab(
-            1, 'svg', "SVG", webgl_main_tab.fig.x_range, webgl_main_tab.fig.y_range)
+            1, 'svg', "Timeline (SVG)", webgl_main_tab.fig.x_range, webgl_main_tab.fig.y_range)
 
         self.__statistics_tab = make_statistics_tab()
 
@@ -318,14 +327,18 @@ class TimelineTraceViewer:
         return rangetool_sl.dataframe()
 
     def __get_statistics_data(self):
-        hists = self.__trace.get_histogram(self.__visible_kinds)
         columns = ['hist', 'top', 'bottom', 'left', 'right', 'kind']
-        data = []
-        for kind, hist, left, right in reversed(hists):
-            max_count = max(hist)
-            for h, l, r in zip(hist, left, right):
-                data.append((h, (kind, h / max_count), (kind, 0), l, r, kind))
-        return pandas.DataFrame(data, columns=columns)
+        if self.__active_main_tab == 2:
+            hists = self.__trace.get_histogram(self.__visible_kinds, self.__statistics_range)
+            data = []
+            for kind, hist, left, right in reversed(hists):
+                max_count = max(hist)
+                if max_count > 0:
+                    for h, l, r in zip(hist, left, right):
+                        data.append((h, (kind, h / max_count), (kind, 0), l, r, kind))
+            return pandas.DataFrame(data, columns=columns)
+        else:
+            return pandas.DataFrame([], columns=columns)
 
     def __get_sampled_time_slice(self, time_range, num_samples):
         sl, num_total = self.__trace.get_sampled_time_slice(time_range, self.__visible_kinds, num_samples)
@@ -371,9 +384,18 @@ class TimelineTraceViewer:
             self.__main_time_range = (self.__main_time_range[0], new)
             self.__request_refresh_main()
 
+    def __on_change_statistics_range(self, attr, old, new):
+        if attr == 'start':
+            self.__statistics_range = (new, self.__statistics_range[1])
+            self.__request_refresh_statistics()
+        elif attr == 'end':
+            self.__statistics_range = (self.__statistics_range[0], new)
+            self.__request_refresh_statistics()
+
     def __on_change_main_tab(self, attr, old, new):
         self.__active_main_tab = new
         self.__request_refresh_main()
+        self.__request_refresh_statistics()
 
     def __on_change_slider(self, name, attr, old, new):
         self.__slider_values[name] = new
@@ -397,10 +419,13 @@ class TimelineTraceViewer:
     def __request_refresh_main(self):
         self.__need_refresh['main'] = True
 
+    def __request_refresh_statistics(self):
+        self.__need_refresh['stat'] = True
+
     def __request_refresh_all(self):
         self.__request_refresh_main()
+        self.__request_refresh_statistics()
         self.__need_refresh['sub'] = True
-        self.__need_refresh['stat'] = True
 
     def __on_timer(self):
         def refresh(plot_name, update_func):
