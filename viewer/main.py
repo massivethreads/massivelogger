@@ -209,7 +209,7 @@ class TimelineTraceViewer:
 
             fig = bokeh.plotting.figure(
                 plot_width=main_width, plot_height=main_height,
-                x_range=self.__statistics_range, y_range=self.__kinds,
+                x_range=self.__statistics_range, y_range=[""],
                 tools='hover,xwheel_zoom,ywheel_zoom,xpan,ypan,reset,crosshair,save,help',
                 active_drag='xpan', active_scroll='xwheel_zoom',
                 tooltips=TOOLTIPS, output_backend='webgl')
@@ -221,7 +221,6 @@ class TimelineTraceViewer:
                      hover_color="firebrick")
 
             fig.xaxis.formatter = bokeh.models.formatters.NumeralTickFormatter(format=xformat)
-            fig.y_range.range_padding = 0.12
 
             fig.x_range.on_change('start', self.__on_change_statistics_range)
             fig.x_range.on_change('end', self.__on_change_statistics_range)
@@ -250,6 +249,7 @@ class TimelineTraceViewer:
             filters=[bokeh.models.GroupFilter(column_name='is_migration', group='True')])
 
         rt_fig = bokeh.plotting.figure(plot_width=1200, plot_height=150,
+                                       x_range=self.__rt_time_range,
                                        toolbar_location=None, output_backend='webgl')
 
         rt_fig.xaxis.formatter = bokeh.models.formatters.NumeralTickFormatter(format=xformat)
@@ -323,7 +323,7 @@ class TimelineTraceViewer:
 
     def __get_rangetool_data(self, time_range):
         rangetool_sl, _ = self.__get_sampled_time_slice(
-            self.__rt_time_range, self.__slider_values['num_rt_bar_samples'])
+            time_range, self.__slider_values['num_rt_bar_samples'])
         return rangetool_sl.dataframe()
 
     def __get_statistics_data(self):
@@ -333,9 +333,9 @@ class TimelineTraceViewer:
             data = []
             for kind, hist, left, right in reversed(hists):
                 max_count = max(hist)
-                if max_count > 0:
-                    for h, l, r in zip(hist, left, right):
-                        data.append((h, (kind, h / max_count), (kind, 0), l, r, kind))
+                scale = 1 / max_count if max_count > 0 else 0
+                for h, l, r in zip(hist, left, right):
+                    data.append((h, (kind, h * scale), (kind, 0), l, r, kind))
             return pandas.DataFrame(data, columns=columns)
         else:
             return pandas.DataFrame([], columns=columns)
@@ -364,7 +364,10 @@ class TimelineTraceViewer:
     def __update_statistics_data(self):
         self.__statistics_src.data = \
             bokeh.models.ColumnDataSource.from_df(self.__get_statistics_data())
-        self.__statistics_tab.child.y_range.factors = self.__visible_kinds
+        if self.__active_main_tab == 2:
+            self.__statistics_tab.child.y_range.factors = self.__visible_kinds + [""]
+        else:
+            self.__statistics_tab.child.y_range.factors = [""]
 
     def __get_sample_info(self):
         n_actual = self.__num_main_actual_events
