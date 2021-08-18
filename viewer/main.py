@@ -95,18 +95,21 @@ class TimelineTrace:
         return [kind for kind, _, _ in self.__data]
 
     def get_histogram(self, kinds):
-        duration_max = max([kind_df['duration'].max()
-                            for kind, kind_df, _ in self.__data if kind in kinds])
-        ret = []
-        for kind, kind_df, _ in self.__data:
-            if kind in kinds:
-                hist, edges = numpy.histogram(kind_df['duration'], range=(0, duration_max), bins=300)
-                ret.append((kind, hist, edges[:-1], edges[1:]))
-        return ret
+        if len(kinds) == 0:
+            return []
+        else:
+            duration_max = max([kind_df['duration'].max()
+                                for kind, kind_df, _ in self.__data if kind in kinds])
+            ret = []
+            for kind, kind_df, _ in self.__data:
+                if kind in kinds:
+                    hist, edges = numpy.histogram(kind_df['duration'], range=(0, duration_max), bins=300)
+                    ret.append((kind, hist, edges[:-1], edges[1:]))
+            return ret
 
 class TimelineTraceViewer:
-    __need_refresh = { 'main': False, 'sub': False }
-    __needed_refresh = { 'main': False, 'sub': False }
+    __need_refresh = { 'main': False, 'sub': False, 'stat': False }
+    __needed_refresh = { 'main': False, 'sub': False, 'stat': False }
     __slider_values = {
         'num_main_bar_samples': 10000,
         'label_rate': 0.0,
@@ -206,21 +209,13 @@ class TimelineTraceViewer:
                 y_range=self.__visible_kinds,
                 tooltips=TOOLTIPS, output_backend='svg')
 
-            hists = self.__trace.get_histogram(self.__visible_kinds)
-
-            columns = ['hist', 'top', 'bottom', 'left', 'right', 'kind']
-            data = []
-            for kind, hist, left, right in reversed(hists):
-                max_count = max(hist)
-                for h, l, r in zip(hist, left, right):
-                    data.append((h, (kind, h / max_count), (kind, 0), l, r, kind))
-
-            src = bokeh.models.ColumnDataSource(pandas.DataFrame(data, columns=columns))
-            fig.quad(source=src, top='top', bottom='bottom', left='left', right='right',
-                     fill_color=color_mapper, alpha=0.5)
+            self.__statistics_src = bokeh.models.ColumnDataSource(self.__get_statistics_data())
+            fig.quad(source=self.__statistics_src,
+                     top='top', bottom='bottom', left='left', right='right',
+                     fill_color=color_mapper, alpha=0.8)
 
             fig.xaxis.formatter = bokeh.models.formatters.NumeralTickFormatter(format=xformat)
-            fig.y_range.range_padding = 0.15
+            fig.y_range.range_padding = 0.12
 
             return bokeh.models.Panel(child=fig, title="Statistics")
 
@@ -231,10 +226,10 @@ class TimelineTraceViewer:
         svg_main_tab = make_main_tab(
             1, 'svg', "SVG", webgl_main_tab.fig.x_range, webgl_main_tab.fig.y_range)
 
-        statistics_tab = make_statistics_tab()
+        self.__statistics_tab = make_statistics_tab()
 
         self.__main_tabs = (webgl_main_tab, svg_main_tab)
-        main_tabs = bokeh.models.Tabs(tabs=[ti.panel for ti in self.__main_tabs] + [statistics_tab])
+        main_tabs = bokeh.models.Tabs(tabs=[ti.panel for ti in self.__main_tabs] + [self.__statistics_tab])
         main_tabs.on_change('active', self.__on_change_main_tab)
 
         init_rt_bar_data = self.__get_rangetool_data(init_time_range)
@@ -322,6 +317,16 @@ class TimelineTraceViewer:
             self.__rt_time_range, self.__slider_values['num_rt_bar_samples'])
         return rangetool_sl.dataframe()
 
+    def __get_statistics_data(self):
+        hists = self.__trace.get_histogram(self.__visible_kinds)
+        columns = ['hist', 'top', 'bottom', 'left', 'right', 'kind']
+        data = []
+        for kind, hist, left, right in reversed(hists):
+            max_count = max(hist)
+            for h, l, r in zip(hist, left, right):
+                data.append((h, (kind, h / max_count), (kind, 0), l, r, kind))
+        return pandas.DataFrame(data, columns=columns)
+
     def __get_sampled_time_slice(self, time_range, num_samples):
         sl, num_total = self.__trace.get_sampled_time_slice(time_range, self.__visible_kinds, num_samples)
         sl.add_rank_pos(self.__slider_values['num_conc'])
@@ -342,6 +347,11 @@ class TimelineTraceViewer:
         self.__rt_bar_src.data = \
             bokeh.models.ColumnDataSource.from_df(
                 self.__get_rangetool_data(self.__rt_time_range))
+
+    def __update_statistics_data(self):
+        self.__statistics_src.data = \
+            bokeh.models.ColumnDataSource.from_df(self.__get_statistics_data())
+        self.__statistics_tab.child.y_range.factors = self.__visible_kinds
 
     def __get_sample_info(self):
         n_actual = self.__num_main_actual_events
@@ -390,6 +400,7 @@ class TimelineTraceViewer:
     def __request_refresh_all(self):
         self.__request_refresh_main()
         self.__need_refresh['sub'] = True
+        self.__need_refresh['stat'] = True
 
     def __on_timer(self):
         def refresh(plot_name, update_func):
@@ -406,6 +417,7 @@ class TimelineTraceViewer:
         try:
             refresh('main', self.__update_main_data)
             refresh('sub', self.__update_rangetool_data)
+            refresh('stat', self.__update_statistics_data)
         except:
             # See the trace inside the callback for debugging.
             traceback.print_exc()
