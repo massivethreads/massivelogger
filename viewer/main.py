@@ -97,6 +97,9 @@ class TimelineTrace:
     def get_max_duration(self):
         return max([kind_df['duration'].max() for _, kind_df, _ in self.__data])
 
+    def get_total_duration(self, kinds):
+        return sum([kind_df['duration'].sum() for kind, kind_df, _ in self.__data if kind in kinds])
+
     def get_histogram(self, kinds, duration_range, n_bins=200):
         if len(kinds) == 0:
             return []
@@ -221,7 +224,8 @@ class TimelineTraceViewer:
                 active_drag='xpan', active_scroll='xwheel_zoom',
                 tooltips=TOOLTIPS, output_backend='webgl')
 
-            self.__statistics_src = bokeh.models.ColumnDataSource(self.__get_statistics_data())
+            self.__statistics_src, self.__statistics_label_src = \
+                map(bokeh.models.ColumnDataSource, self.__get_statistics_data())
             fig.quad(source=self.__statistics_src,
                      top='top', bottom='bottom', left='left', right='right',
                      fill_color=color_mapper, alpha=0.8,
@@ -231,6 +235,19 @@ class TimelineTraceViewer:
 
             fig.x_range.on_change('start', self.__on_change_statistics_range)
             fig.x_range.on_change('end', self.__on_change_statistics_range)
+
+            labels1 = bokeh.models.LabelSet(source=self.__statistics_label_src,
+                                           x='x', y='kind', text='text1',
+                                           x_offset=-10, y_offset=0,
+                                           text_align='right', text_font_size='9px',
+                                           background_fill_alpha=0.6, background_fill_color='white')
+            labels2 = bokeh.models.LabelSet(source=self.__statistics_label_src,
+                                           x='x', y='kind', text='text2',
+                                           x_offset=-10, y_offset=10,
+                                           text_align='right', text_font_size='9px',
+                                           background_fill_alpha=0.6, background_fill_color='white')
+            fig.add_layout(labels1)
+            fig.add_layout(labels2)
 
             return bokeh.models.Panel(child=fig, title="Statistics")
 
@@ -334,18 +351,26 @@ class TimelineTraceViewer:
         return rangetool_sl.dataframe()
 
     def __get_statistics_data(self):
-        columns = ['count', 'duration', 'top', 'bottom', 'left', 'right', 'kind']
+        data_columns = ['count', 'duration', 'top', 'bottom', 'left', 'right', 'kind']
+        label_columns = ['kind', 'text1', 'text2', 'x']
         if self.__active_main_tab == 2:
             hists = self.__trace.get_histogram(self.__visible_kinds, self.__statistics_range)
             data = []
+            labels = []
             for kind, hist_count, hist_duration, left, right in reversed(hists):
                 max_d = max(hist_duration)
                 scale = 1 / max_d if max_d > 0 else 0
                 for hc, hd, l, r in zip(hist_count, hist_duration, left, right):
                     data.append((hc, hd, (kind, hd * scale), (kind, 0), l, r, kind))
-            return pandas.DataFrame(data, columns=columns)
+
+                text1 = "Max duration: {:,}".format(max_d)
+                total = self.__trace.get_total_duration([kind])
+                shown = sum(hist_duration)
+                text2 = "{:.1f} % ({:,} / {:,}) shown".format(shown / total * 100, shown, total)
+                labels.append((kind, text1, text2, self.__statistics_range[1]))
+            return pandas.DataFrame(data, columns=data_columns), pandas.DataFrame(labels, columns=label_columns)
         else:
-            return pandas.DataFrame([], columns=columns)
+            return pandas.DataFrame([], columns=data_columns), pandas.DataFrame([], columns=label_columns)
 
     def __get_sampled_time_slice(self, time_range, num_samples):
         sl, num_total = self.__trace.get_sampled_time_slice(time_range, self.__visible_kinds, num_samples)
@@ -369,8 +394,8 @@ class TimelineTraceViewer:
                 self.__get_rangetool_data(self.__rt_time_range))
 
     def __update_statistics_data(self):
-        self.__statistics_src.data = \
-            bokeh.models.ColumnDataSource.from_df(self.__get_statistics_data())
+        self.__statistics_src.data, self.__statistics_label_src.data = \
+            map(bokeh.models.ColumnDataSource.from_df, self.__get_statistics_data())
         if self.__active_main_tab == 2:
             self.__statistics_tab.child.y_range.factors = self.__visible_kinds + [""]
         else:
