@@ -97,15 +97,21 @@ class TimelineTrace:
     def get_max_duration(self):
         return max([kind_df['duration'].max() for _, kind_df, _ in self.__data])
 
-    def get_histogram(self, kinds, duration_range, n_bins=300):
+    def get_histogram(self, kinds, duration_range, n_bins=200):
         if len(kinds) == 0:
             return []
         else:
             dfs = [(kind, kind_df) for kind, kind_df, _ in self.__data if kind in kinds]
             ret = []
             for kind, kind_df in dfs:
-                hist, edges = numpy.histogram(kind_df['duration'], range=duration_range, bins=n_bins)
-                ret.append((kind, hist, edges[:-1], edges[1:]))
+                hist_count, edges = numpy.histogram(kind_df['duration'],
+                                                    range=duration_range,
+                                                    bins=n_bins)
+                hist_duration, _  = numpy.histogram(kind_df['duration'],
+                                                    range=duration_range,
+                                                    weights=kind_df['duration'],
+                                                    bins=n_bins)
+                ret.append((kind, hist_count, hist_duration, edges[:-1], edges[1:]))
             return ret
 
 class TimelineTraceViewer:
@@ -201,7 +207,8 @@ class TimelineTraceViewer:
         def make_statistics_tab():
             TOOLTIPS = [
                 ("kind", "@kind"),
-                ("count", "@hist"),
+                ("count", "@count"),
+                ("duration", "@duration{{{0}}}".format(xformat)),
                 ("range", "[@left{{{0}}}, @right{{{0}}})".format(xformat)),
             ]
 
@@ -327,15 +334,15 @@ class TimelineTraceViewer:
         return rangetool_sl.dataframe()
 
     def __get_statistics_data(self):
-        columns = ['hist', 'top', 'bottom', 'left', 'right', 'kind']
+        columns = ['count', 'duration', 'top', 'bottom', 'left', 'right', 'kind']
         if self.__active_main_tab == 2:
             hists = self.__trace.get_histogram(self.__visible_kinds, self.__statistics_range)
             data = []
-            for kind, hist, left, right in reversed(hists):
-                max_count = max(hist)
-                scale = 1 / max_count if max_count > 0 else 0
-                for h, l, r in zip(hist, left, right):
-                    data.append((h, (kind, h * scale), (kind, 0), l, r, kind))
+            for kind, hist_count, hist_duration, left, right in reversed(hists):
+                max_d = max(hist_duration)
+                scale = 1 / max_d if max_d > 0 else 0
+                for hc, hd, l, r in zip(hist_count, hist_duration, left, right):
+                    data.append((hc, hd, (kind, hd * scale), (kind, 0), l, r, kind))
             return pandas.DataFrame(data, columns=columns)
         else:
             return pandas.DataFrame([], columns=columns)
