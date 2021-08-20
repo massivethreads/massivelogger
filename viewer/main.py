@@ -357,7 +357,7 @@ class TimelineTraceViewer:
             hists = self.__trace.get_histogram(self.__visible_kinds, self.__statistics_range)
             data = []
             labels = []
-            for kind, hist_count, hist_duration, left, right in reversed(hists):
+            for kind, hist_count, hist_duration, left, right in hists:
                 max_d = max(hist_duration)
                 scale = 1 / max_d if max_d > 0 else 0
                 for hc, hd, l, r in zip(hist_count, hist_duration, left, right):
@@ -397,7 +397,7 @@ class TimelineTraceViewer:
         self.__statistics_src.data, self.__statistics_label_src.data = \
             map(bokeh.models.ColumnDataSource.from_df, self.__get_statistics_data())
         if self.__active_main_tab == 2:
-            self.__statistics_tab.child.y_range.factors = self.__visible_kinds + [""]
+            self.__statistics_tab.child.y_range.factors = list(reversed(self.__visible_kinds)) + [""]
         else:
             self.__statistics_tab.child.y_range.factors = [""]
 
