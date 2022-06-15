@@ -47,10 +47,10 @@ class TimelineTraceSlice:
                                   self.__df.loc[:, 'rank1']+0.5))
 
 class TimelineTrace:
-    def read_csv(self, input_path):
+    def read_csv(self, input_paths):
         COLUMNS = ['rank0', 't0', 'rank1', 't1', 'kind', 'misc']
         print("Reading CSV...")
-        df = pandas.read_csv(input_path, names=COLUMNS)
+        df = pandas.concat([pandas.read_csv(p, names=COLUMNS) for p in input_paths])
 
         print("Preparing data...")
         df['duration'] = df['t1']-df['t0']
@@ -485,6 +485,6 @@ class TimelineTraceViewer:
 
 trace = TimelineTrace()
 if len(sys.argv) < 2:
-    sys.exit("{} [CSV path]".format(sys.argv[0]))
-trace.read_csv(sys.argv[1])
+    sys.exit("{} [CSV path]...".format(sys.argv[0]))
+trace.read_csv(sys.argv[1:])
 viewer = TimelineTraceViewer(trace)
