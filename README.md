@@ -207,7 +207,7 @@ uint64_t mlog_rdtsc();
 
 Return the value of `rdtsc` instruction.
 
-## Config
+## Compilation Config
 How to set flags:
 ```c
 #define MLOG_XXX 1
@@ -222,6 +222,10 @@ Disabling the check may speed up the logging feature, but it can cause segmentat
 Disable realloc of start and end buffer when buffers become full (default: 0).
 When this flag is set and buffers become full, the execution is aborted without resizing buffers.
 This prevents unconscious overheads with reallocation when measuring the performance.
+
+## Viewer Config
+* By default, the viewer is automatically terminated when the first web session is closed.
+  We can make the server lifetime permanent by setting an environment variable `MLOG_VIEWER_ONESHOT=false`.
 
 ## Illustration of Buffers
 
