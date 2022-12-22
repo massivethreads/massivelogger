@@ -156,7 +156,7 @@ class TimelineTraceViewer:
         MainTabInfo = collections.namedtuple(
             'MainTabInfo', ('fig', 'migration_seg', 'bar_src', 'label_src', 'panel'))
 
-        def make_main_tab(tab_num, backend, title, x_range, y_range):
+        def make_main_tab(tab_num, backend, title, **plot_kwargs):
             TOOLTIPS = [
                 ("t", "@t0{{{0}}} -> @t1{{{0}}}".format(xformat)),
                 ("duration", "@duration{{{0}}}".format(xformat)),
@@ -166,11 +166,10 @@ class TimelineTraceViewer:
             ]
 
             fig = bokeh.plotting.figure(
-                plot_width=main_width, plot_height=main_height,
-                x_range=x_range, y_range=y_range,
+                width=main_width, height=main_height,
                 tools='hover,xwheel_zoom,ywheel_zoom,xpan,ypan,reset,crosshair,save,help',
                 active_drag='xpan', active_scroll='xwheel_zoom',
-                tooltips=TOOLTIPS, output_backend=backend)
+                tooltips=TOOLTIPS, output_backend=backend, **plot_kwargs)
 
             yticker = bokeh.models.tickers.SingleIntervalTicker(interval=1)
             fig.yaxis.ticker = yticker
@@ -182,27 +181,27 @@ class TimelineTraceViewer:
 
             bar_src, label_src = map(bokeh.models.ColumnDataSource, self.__get_main_data(tab_num))
 
-            bar_view = bokeh.models.CDSView(source=bar_src,
-                filters=[bokeh.models.GroupFilter(column_name='is_migration', group='False')])
-            migration_view = bokeh.models.CDSView(source=bar_src,
-                filters=[bokeh.models.GroupFilter(column_name='is_migration', group='True')])
+            bar_view = bokeh.models.CDSView(
+                filter=bokeh.models.GroupFilter(column_name='is_migration', group='False'))
+            migration_view = bokeh.models.CDSView(
+                filter=bokeh.models.GroupFilter(column_name='is_migration', group='True'))
 
             fig.hbar(
-                y='rank0_pos', left="t0", right="t1", height='height', legend='kind',
+                y='rank0_pos', left="t0", right="t1", height='height', legend_field='kind',
                 color=color_mapper, hover_color=color_mapper, alpha=0.8, hover_alpha=1.0,
                 hover_line_color="firebrick", source=bar_src, view=bar_view)
 
             migration_seg = fig.segment(
-                x0='t0', x1='t1', y0='rank0_pos', y1='rank1_pos', legend='kind',
+                x0='t0', x1='t1', y0='rank0_pos', y1='rank1_pos', legend_field='kind',
                 color=color_mapper, hover_line_color="firebrick",
                 source=bar_src, view=migration_view)
 
             labels = bokeh.models.LabelSet(
                 y='rank0_pos', x='t0', text='kind', text_baseline='middle',
-                source=label_src, level='glyph', render_mode='canvas')
+                source=label_src, level='glyph')
             fig.add_layout(labels)
 
-            panel = bokeh.models.Panel(child=fig, title=title)
+            panel = bokeh.models.TabPanel(child=fig, title=title)
 
             return MainTabInfo(fig=fig, migration_seg=migration_seg,
                                bar_src=bar_src, label_src=label_src, panel=panel)
@@ -218,7 +217,7 @@ class TimelineTraceViewer:
             self.__statistics_range = (0, self.__trace.get_max_duration())
 
             fig = bokeh.plotting.figure(
-                plot_width=main_width, plot_height=main_height,
+                width=main_width, height=main_height,
                 x_range=self.__statistics_range, y_range=[""],
                 tools='hover,xwheel_zoom,ywheel_zoom,xpan,ypan,reset,crosshair,save,help',
                 active_drag='xpan', active_scroll='xwheel_zoom',
@@ -237,26 +236,26 @@ class TimelineTraceViewer:
             fig.x_range.on_change('end', self.__on_change_statistics_range)
 
             labels1 = bokeh.models.LabelSet(source=self.__statistics_label_src,
-                                           x='x', y='kind', text='text1',
-                                           x_offset=-10, y_offset=0,
-                                           text_align='right', text_font_size='9px',
-                                           background_fill_alpha=0.6, background_fill_color='white')
+                                            x='x', y='kind', text='text1',
+                                            x_offset=-10, y_offset=0,
+                                            text_align='right', text_font_size='9px',
+                                            background_fill_alpha=0.6, background_fill_color='white')
             labels2 = bokeh.models.LabelSet(source=self.__statistics_label_src,
-                                           x='x', y='kind', text='text2',
-                                           x_offset=-10, y_offset=10,
-                                           text_align='right', text_font_size='9px',
-                                           background_fill_alpha=0.6, background_fill_color='white')
+                                            x='x', y='kind', text='text2',
+                                            x_offset=-10, y_offset=10,
+                                            text_align='right', text_font_size='9px',
+                                            background_fill_alpha=0.6, background_fill_color='white')
             fig.add_layout(labels1)
             fig.add_layout(labels2)
 
-            return bokeh.models.Panel(child=fig, title="Statistics")
+            return bokeh.models.TabPanel(child=fig, title="Statistics")
 
-        webgl_main_tab = make_main_tab(0, 'webgl', "Timeline (WebGL)", init_time_range, None)
+        webgl_main_tab = make_main_tab(0, 'webgl', "Timeline (WebGL)", x_range=init_time_range)
         webgl_main_tab.fig.x_range.on_change('start', self.__on_change_time_range)
         webgl_main_tab.fig.x_range.on_change('end', self.__on_change_time_range)
 
-        svg_main_tab = make_main_tab(
-            1, 'svg', "Timeline (SVG)", webgl_main_tab.fig.x_range, webgl_main_tab.fig.y_range)
+        svg_main_tab = make_main_tab(1, 'svg', "Timeline (SVG)",
+                                     x_range=webgl_main_tab.fig.x_range, y_range=webgl_main_tab.fig.y_range)
 
         self.__statistics_tab = make_statistics_tab()
 
@@ -267,12 +266,12 @@ class TimelineTraceViewer:
         init_rt_bar_data = self.__get_rangetool_data(init_time_range)
         self.__rt_bar_src = bokeh.models.ColumnDataSource(init_rt_bar_data)
 
-        rt_bar_view = bokeh.models.CDSView(source=self.__rt_bar_src,
-            filters=[bokeh.models.GroupFilter(column_name='is_migration', group='False')])
-        rt_migration_view = bokeh.models.CDSView(source=self.__rt_bar_src,
-            filters=[bokeh.models.GroupFilter(column_name='is_migration', group='True')])
+        rt_bar_view = bokeh.models.CDSView(
+            filter=bokeh.models.GroupFilter(column_name='is_migration', group='False'))
+        rt_migration_view = bokeh.models.CDSView(
+            filter=bokeh.models.GroupFilter(column_name='is_migration', group='True'))
 
-        rt_fig = bokeh.plotting.figure(plot_width=1200, plot_height=150,
+        rt_fig = bokeh.plotting.figure(width=1200, height=150,
                                        x_range=self.__rt_time_range,
                                        toolbar_location=None, output_backend='webgl')
 
@@ -309,16 +308,16 @@ class TimelineTraceViewer:
         visibility_checkbox_group = \
             bokeh.models.widgets.CheckboxGroup(
                 labels=["Show legend", "Show migrations"], active=[0, 1])
-        visibility_checkbox_group.on_click(self.__on_click_visibility_checkboxes)
+        visibility_checkbox_group.on_change("active", self.__on_change_visibility_checkboxes)
 
         kind_all_button = \
             bokeh.models.widgets.CheckboxButtonGroup(labels=["Show all"], active=[0])
-        kind_all_button.on_click(self.__on_click_show_all_kinds)
+        kind_all_button.on_change("active", self.__on_change_show_all_kinds)
 
         self.__kind_checkbox_group = \
             bokeh.models.widgets.CheckboxGroup(
                 labels=self.__kinds, active=list(range(len(self.__kinds))))
-        self.__kind_checkbox_group.on_click(self.__on_click_kind_checkboxes)
+        self.__kind_checkbox_group.on_change("active", self.__on_change_kind_checkboxes)
 
         curdoc = bokeh.io.curdoc()
         row = bokeh.layouts.row
@@ -436,20 +435,20 @@ class TimelineTraceViewer:
         self.__slider_values[name] = new
         self.__request_refresh_all()
 
-    def __on_click_visibility_checkboxes(self, active_list):
-        is_legend_visible = 0 in active_list
-        is_migration_visible = 1 in active_list
+    def __on_change_visibility_checkboxes(self, attr, old, new):
+        is_legend_visible = 0 in new
+        is_migration_visible = 1 in new
         for ti in self.__main_tabs:
             ti.fig.legend.visible = is_legend_visible
             ti.migration_seg.visible = is_migration_visible
 
-    def __on_click_kind_checkboxes(self, active_list):
-        self.__visible_kinds = list(sorted(self.__kinds[i] for i in active_list))
+    def __on_change_kind_checkboxes(self, attr, old, new):
+        self.__visible_kinds = list(sorted(self.__kinds[i] for i in new))
         self.__request_refresh_all()
 
-    def __on_click_show_all_kinds(self, active_list):
+    def __on_change_show_all_kinds(self, attr, old, new):
         self.__kind_checkbox_group.active = \
-            list(range(len(self.__kinds))) if 0 in active_list else []
+            list(range(len(self.__kinds))) if 0 in new else []
 
     def __request_refresh_main(self):
         self.__need_refresh['main'] = True
