@@ -23,9 +23,13 @@ static inline uint64_t mlog_clock_gettime_in_nsec() {
 }
 
 static inline uint64_t mlog_rdtsc() {
+#if defined(__x86_64__)
   uint64_t r;
   __asm__ volatile ("rdtsc; shlq $32, %%rdx; orq %%rdx, %%rax" : "=a"(r) :: "%rdx");
   return r;
+#else
+  return 0;
+#endif
 }
 
 #ifdef __cplusplus
